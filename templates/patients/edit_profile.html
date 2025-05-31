@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Chỉnh sửa hồ sơ - HealthyCare{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-user-edit mr-2"></i>Chỉnh sửa thông tin cá nhân</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-3 text-center mb-4">
+                                <div class="avatar-upload">
+                                    <div class="avatar-preview mb-3">
+                                        {% if user.avatar %}
+                                            <img src="{{ user.avatar.url }}" id="avatar-preview" class="img-fluid rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
+                                        {% else %}
+                                            <img src="{% static 'images/default-avatar.png' %}" id="avatar-preview" class="img-fluid rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
+                                        {% endif %}
+                                    </div>
+                                    <div class="custom-file">
+                                        <input type="file" class="custom-file-input" id="avatar" name="avatar" onchange="previewAvatar(this)">
+                                        <label class="custom-file-label" for="avatar">Chọn ảnh</label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-9">
+                                <h5 class="border-bottom pb-2">Thông tin cơ bản</h5>
+                                <div class="row">
+                                    <div class="col-md-6 form-group">
+                                        <label for="first_name">Họ</label>
+                                        <input type="text" id="first_name" name="first_name" class="form-control" value="{{ user.first_name }}" required>
+                                    </div>
+                                    <div class="col-md-6 form-group">
+                                        <label for="last_name">Tên</label>
+                                        <input type="text" id="last_name" name="last_name" class="form-control" value="{{ user.last_name }}" required>
+                                    </div>
+                                    <div class="col-md-6 form-group">
+                                        <label for="email">Email</label>
+                                        <input type="email" id="email" name="email" class="form-control" value="{{ user.email }}" required>
+                                    </div>
+                                    <div class="col-md-6 form-group">
+                                        <label for="phone">Số điện thoại</label>
+                                        <input type="tel" id="phone" name="phone" class="form-control" value="{{ user.phone }}" required>
+                                    </div>
+                                    <div class="col-md-6 form-group">
+                                        <label for="date_of_birth">Ngày sinh</label>
+                                        <input type="text" id="date_of_birth" name="date_of_birth" class="form-control datepicker" value="{{ user.date_of_birth|date:'Y-m-d' }}">
+                                    </div>
+                                    <div class="col-md-6 form-group">
+                                        <label for="gender">Giới tính</label>
+                                        <select id="gender" name="gender" class="form-control" required>
+                                            <option value="" disabled{% if not patient.gender %} selected{% endif %}>-- Chọn giới tính --</option>
+                                            <option value="M"{% if patient.gender == 'M' %} selected{% endif %}>Nam</option>
+                                            <option value="F"{% if patient.gender == 'F' %} selected{% endif %}>Nữ</option>
+                                            <option value="O"{% if patient.gender == 'O' %} selected{% endif %}>Khác</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-12 form-group">
+                                        <label for="address">Địa chỉ</label>
+                                        <textarea id="address" name="address" class="form-control" rows="2">{{ user.address }}</textarea>
+                                    </div>
+                                </div>
+                                
+                                <h5 class="border-bottom pb-2 mt-4">Thông tin y tế</h5>
+                                <div class="row">
+                                    <div class="col-md-6 form-group">
+                                        <label for="blood_type">Nhóm máu</label>
+                                        <select id="blood_type" name="blood_type" class="form-control">
+                                            <option value="" {% if not patient.blood_type %}selected{% endif %}>Không biết/Chưa xác định</option>
+                                            {% for type_code, type_name in patient.BLOOD_TYPE_CHOICES %}
+                                            <option value="{{ type_code }}" {% if patient.blood_type == type_code %}selected{% endif %}>{{ type_name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 form-group">
+                                        <label for="height">Chiều cao (cm)</label>
+                                        <input type="number" id="height" name="height" class="form-control" value="{{ patient.height|default:'' }}" step="0.1">
+                                    </div>
+                                    <div class="col-md-3 form-group">
+                                        <label for="weight">Cân nặng (kg)</label>
+                                        <input type="number" id="weight" name="weight" class="form-control" value="{{ patient.weight|default:'' }}" step="0.1">
+                                    </div>
+                                    <div class="col-md-12 form-group">
+                                        <label for="allergies">Dị ứng (nếu có)</label>
+                                        <textarea id="allergies" name="allergies" class="form-control" rows="2">{{ patient.allergies|default:'' }}</textarea>
+                                    </div>
+                                    <div class="col-md-12 form-group">
+                                        <label for="medical_history">Tiền sử bệnh</label>
+                                        <textarea id="medical_history" name="medical_history" class="form-control" rows="3">{{ patient.medical_history|default:'' }}</textarea>
+                                    </div>
+                                    <div class="col-md-12 form-group">
+                                        <label for="current_medications">Thuốc đang sử dụng</label>
+                                        <textarea id="current_medications" name="current_medications" class="form-control" rows="3">{{ patient.current_medications|default:'' }}</textarea>
+                                    </div>
+                                </div>
+                                
+                                <h5 class="border-bottom pb-2 mt-4">Người liên hệ khẩn cấp</h5>
+                                <div class="row">
+                                    <div class="col-md-6 form-group">
+                                        <label for="emergency_contact_name">Họ tên</label>
+                                        <input type="text" id="emergency_contact_name" name="emergency_contact_name" class="form-control" value="{{ patient.emergency_contact_name|default:'' }}">
+                                    </div>
+                                    <div class="col-md-6 form-group">
+                                        <label for="emergency_contact_phone">Số điện thoại</label>
+                                        <input type="tel" id="emergency_contact_phone" name="emergency_contact_phone" class="form-control" value="{{ patient.emergency_contact_phone|default:'' }}">
+                                    </div>
+                                </div>
+                                
+                                <div class="row mt-4">
+                                    <div class="col-12">
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-save mr-1"></i>Lưu thông tin
+                                        </button>
+                                        <a href="{% url 'patients:profile' %}" class="btn btn-secondary ml-2">
+                                            <i class="fas fa-times mr-1"></i>Hủy
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/vn.js"></script>
+<script>
+    // Khởi tạo date picker
+    flatpickr(".datepicker", {
+        locale: "vn",
+        dateFormat: "Y-m-d",
+        maxDate: new Date(),
+        allowInput: true,
+    });
+    
+    // Xem trước avatar khi upload
+    function previewAvatar(input) {
+        if (input.files && input.files[0]) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('avatar-preview').src = e.target.result;
+            }
+            reader.readAsDataURL(input.files[0]);
+            var fileName = input.files[0].name;
+            input.nextElementSibling.innerText = fileName;
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Chi tiết bệnh nhân - HealthyCare{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="card shadow mb-4">
+        <div class="card-header bg-primary text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4 class="mb-0"><i class="fas fa-user-circle mr-2"></i>Thông tin bệnh nhân</h4>
+                <a href="{% url 'patients:list' %}" class="btn btn-sm btn-light">
+                    <i class="fas fa-arrow-left mr-1"></i>Quay lại danh sách
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-lg-3 text-center">
+                    {% if patient.user.avatar %}
+                        <img src="{{ patient.user.avatar.url }}" alt="Avatar" class="img-fluid rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover;">
+                    {% else %}
+                        <img src="{% static 'images/default-avatar.png' %}" alt="Avatar mặc định" class="img-fluid rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover;">
+                    {% endif %}
+                    <h5>{{ patient.user.get_full_name }}</h5>
+                    <p class="badge badge-primary">{{ patient.patient_id }}</p>
+                    
+                    <div class="mt-3">
+                        <a href="{% url 'appointments:create_for_patient' patient.id %}" class="btn btn-success btn-sm btn-block">
+                            <i class="fas fa-calendar-plus mr-1"></i>Tạo lịch hẹn mới
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="col-lg-9">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5 class="border-bottom pb-2">Thông tin cá nhân</h5>
+                            <table class="table table-sm">
+                                <tbody>
+                                    <tr>
+                                        <th width="140">Họ tên:</th>
+                                        <td>{{ patient.user.get_full_name }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Giới tính:</th>
+                                        <td>{{ patient.get_gender_display }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Ngày sinh:</th>
+                                        <td>{{ patient.user.date_of_birth|date:"d/m/Y"|default:"Chưa cập nhật" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Email:</th>
+                                        <td>{{ patient.user.email }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Số điện thoại:</th>
+                                        <td>{{ patient.user.phone|default:"Chưa cập nhật" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Địa chỉ:</th>
+                                        <td>{{ patient.user.address|default:"Chưa cập nhật" }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            
+                            <h5 class="border-bottom pb-2 mt-4">Liên hệ khẩn cấp</h5>
+                            <table class="table table-sm">
+                                <tbody>
+                                    <tr>
+                                        <th width="140">Họ tên:</th>
+                                        <td>{{ patient.emergency_contact_name|default:"Chưa cập nhật" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Số điện thoại:</th>
+                                        <td>{{ patient.emergency_contact_phone|default:"Chưa cập nhật" }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h5 class="border-bottom pb-2">Thông tin y tế</h5>
+                            <table class="table table-sm">
+                                <tbody>
+                                    <tr>
+                                        <th width="140">Nhóm máu:</th>
+                                        <td>{{ patient.blood_type|default:"Chưa cập nhật" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Chiều cao:</th>
+                                        <td>{% if patient.height %}{{ patient.height }} cm{% else %}Chưa cập nhật{% endif %}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Cân nặng:</th>
+                                        <td>{% if patient.weight %}{{ patient.weight }} kg{% else %}Chưa cập nhật{% endif %}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            
+                            <h5 class="border-bottom pb-2 mt-3">Tiền sử bệnh</h5>
+                            <div class="mb-3">
+                                {% if patient.medical_history %}
+                                    <p>{{ patient.medical_history|linebreaks }}</p>
+                                {% else %}
+                                    <p class="text-muted">Không có thông tin</p>
+                                {% endif %}
+                            </div>
+                            
+                            <h5 class="border-bottom pb-2 mt-3">Dị ứng</h5>
+                            <div class="mb-3">
+                                {% if patient.allergies %}
+                                    <p>{{ patient.allergies|linebreaks }}</p>
+                                {% else %}
+                                    <p class="text-muted">Không có thông tin về dị ứng</p>
+                                {% endif %}
+                            </div>
+                            
+                            <h5 class="border-bottom pb-2 mt-3">Thuốc đang sử dụng</h5>
+                            <div>
+                                {% if patient.current_medications %}
+                                    <p>{{ patient.current_medications|linebreaks }}</p>
+                                {% else %}
+                                    <p class="text-muted">Không có thông tin</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card shadow">
+        <div class="card-header bg-info text-white">
+            <h4 class="mb-0"><i class="fas fa-calendar-check mr-2"></i>Lịch sử khám bệnh</h4>
+        </div>
+        <div class="card-body">
+            {% if appointments %}
+                <div class="table-responsive">
+                    <table class="table table-hover" id="appointmentTable">
+                        <thead>
+                            <tr>
+                                <th>Ngày khám</th>
+                                <th>Bác sĩ</th>
+                                <th>Loại khám</th>
+                                <th>Chẩn đoán</th>
+                                <th>Trạng thái</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for appointment in appointments %}
+                            <tr>
+                                <td>{{ appointment.appointment_date|date:"d/m/Y" }} {{ appointment.appointment_time }}</td>
+                                <td>BS. {{ appointment.doctor.user.get_full_name }}</td>
+                                <td>{{ appointment.get_appointment_type_display }}</td>
+                                <td>
+                                    {% if appointment.diagnosis %}
+                                        {{ appointment.diagnosis|truncatechars:50 }}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if appointment.status == 'pending' %}
+                                        <span class="badge badge-warning">{{ appointment.get_status_display }}</span>
+                                    {% elif appointment.status == 'confirmed' %}
+                                        <span class="badge badge-info">{{ appointment.get_status_display }}</span>
+                                    {% elif appointment.status == 'in_progress' %}
+                                        <span class="badge badge-primary">{{ appointment.get_status_display }}</span>
+                                    {% elif appointment.status == 'completed' %}
+                                        <span class="badge badge-success">{{ appointment.get_status_display }}</span>
+                                    {% elif appointment.status == 'cancelled' %}
+                                        <span class="badge badge-danger">{{ appointment.get_status_display }}</span>
+                                    {% else %}
+                                        <span class="badge badge-secondary">{{ appointment.get_status_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'appointments:detail' appointment.id %}" class="btn btn-sm btn-primary">
+                                        Chi tiết
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-calendar-times fa-4x text-muted mb-3"></i>
+                    <h5 class="text-muted">Chưa có lịch sử khám bệnh</h5>
+                    <p>Bệnh nhân này chưa có buổi khám bệnh nào được ghi nhận.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Khởi tạo data table nếu có lịch sử khám bệnh
+        if ($('#appointmentTable').length) {
+            $('#appointmentTable').DataTable({
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/vi.json'
+                },
+                "order": [[0, "desc"]]
+            });
+        }
+    });
+</script>
+{% endblock %}

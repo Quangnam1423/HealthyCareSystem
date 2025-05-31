@@ -1,0 +1,485 @@
+import random
+from datetime import datetime, timedelta
+from django.core.management.base import BaseCommand
+from django.contrib.auth import get_user_model
+from django.db import transaction
+from doctors.models import Specialization, Doctor
+from patients.models import Patient
+from appointments.models import Appointment, TimeSlot
+from chatbot.models import ChatbotKnowledge, HealthSymptom
+
+User = get_user_model()
+
+class Command(BaseCommand):
+    help = 'Populate the database with sample data'
+
+    def handle(self, *args, **kwargs):
+        self.stdout.write(self.style.SUCCESS('Starting to populate database with sample data...'))
+        
+        try:
+            with transaction.atomic():
+                self.create_specializations()
+                self.create_doctors()
+                self.create_patients()
+                self.create_appointments()
+                self.create_chatbot_knowledge()
+                self.create_health_symptoms()
+            
+            self.stdout.write(self.style.SUCCESS('Successfully populated database with sample data!'))
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f'Error populating database: {str(e)}'))
+    
+    def create_specializations(self):
+        """Create sample specializations"""
+        self.stdout.write('Creating specializations...')
+        
+        specializations = [
+            {"name": "Nội khoa", "description": "Chuyên khoa về các bệnh nội thương và các tạng trong cơ thể"},
+            {"name": "Ngoại khoa", "description": "Chuyên khoa về phẫu thuật và các bệnh ngoại thương"},
+            {"name": "Tim mạch", "description": "Chuyên khoa về bệnh lý tim mạch và hệ tuần hoàn"},
+            {"name": "Thần kinh", "description": "Chuyên khoa về hệ thần kinh và bệnh lý não bộ"},
+            {"name": "Da liễu", "description": "Chuyên khoa về các bệnh da và thẩm mỹ da"},
+            {"name": "Nhi khoa", "description": "Chuyên khoa về các bệnh lý trẻ em"},
+            {"name": "Sản phụ khoa", "description": "Chuyên khoa về sức khỏe phụ nữ, thai sản và sinh đẻ"},
+            {"name": "Mắt", "description": "Chuyên khoa về các bệnh mắt và thị lực"},
+            {"name": "Tai mũi họng", "description": "Chuyên khoa về bệnh lý tai, mũi và họng"},
+            {"name": "Răng hàm mặt", "description": "Chuyên khoa về nha khoa và các bệnh răng miệng"}
+        ]
+        
+        for spec in specializations:
+            Specialization.objects.get_or_create(
+                name=spec["name"],
+                defaults={"description": spec["description"]}
+            )
+        
+        self.stdout.write(self.style.SUCCESS(f'Created {len(specializations)} specializations'))
+    
+    def create_doctors(self):
+        """Create sample doctors"""
+        self.stdout.write('Creating doctors...')
+        
+        specializations = list(Specialization.objects.all())
+        
+        doctors_data = [
+            {
+                "username": "dr.nguyen",
+                "email": "dr.nguyen@healthycare.vn",
+                "password": "Password123",
+                "first_name": "Minh",
+                "last_name": "Nguyễn",
+                "user_type": "doctor"
+            },
+            {
+                "username": "dr.tran",
+                "email": "dr.tran@healthycare.vn",
+                "password": "Password123",
+                "first_name": "Thu",
+                "last_name": "Trần",
+                "user_type": "doctor"
+            },
+            {
+                "username": "dr.le",
+                "email": "dr.le@healthycare.vn",
+                "password": "Password123",
+                "first_name": "Hương",
+                "last_name": "Lê",
+                "user_type": "doctor"
+            },
+            {
+                "username": "dr.pham",
+                "email": "dr.pham@healthycare.vn",
+                "password": "Password123",
+                "first_name": "Đức",
+                "last_name": "Phạm",
+                "user_type": "doctor"
+            },
+            {
+                "username": "dr.hoang",
+                "email": "dr.hoang@healthycare.vn",
+                "password": "Password123",
+                "first_name": "Tùng",
+                "last_name": "Hoàng",
+                "user_type": "doctor"
+            }
+        ]
+        
+        for doc_data in doctors_data:
+            # Create user
+            user, created = User.objects.get_or_create(
+                username=doc_data["username"],
+                defaults={
+                    "email": doc_data["email"],
+                    "first_name": doc_data["first_name"],
+                    "last_name": doc_data["last_name"],
+                    "user_type": doc_data["user_type"]
+                }
+            )
+            
+            if created:
+                user.set_password(doc_data["password"])
+                user.save()
+                
+                # Create doctor profile
+                doctor = Doctor.objects.create(
+                    user=user,
+                    doctor_id=f"DR{random.randint(10000, 99999)}",
+                    license_number=f"LIC{random.randint(10000, 99999)}",
+                    education=random.choice([
+                        "Đại học Y Hà Nội",
+                        "Đại học Y dược TP.HCM",
+                        "Đại học Y Huế",
+                        "Đại học Y dược Cần Thơ"
+                    ]),
+                    years_of_experience=random.randint(3, 15),
+                    consultation_fee=random.choice([200000, 250000, 300000, 350000, 400000]),
+                    rating=round(random.uniform(3.0, 5.0), 1),
+                    bio="Bác sĩ với nhiều năm kinh nghiệm trong lĩnh vực y khoa, luôn tận tâm với bệnh nhân.",
+                    is_available=True
+                )
+                
+                # Add random specializations
+                chosen_specs = random.sample(specializations, random.randint(1, 3))
+                doctor.specializations.add(*chosen_specs)
+                
+                # Create available time slots
+                self.create_time_slots(doctor)
+        
+        self.stdout.write(self.style.SUCCESS(f'Created {len(doctors_data)} doctors'))
+    
+    def create_time_slots(self, doctor):
+        """Create time slots for a doctor"""
+        today = datetime.now().date()
+        
+        # Create slots for the next 14 days
+        for day_offset in range(14):
+            slot_date = today + timedelta(days=day_offset)
+            
+            # Skip weekends for some doctors to make it more realistic
+            if doctor.id % 2 == 0 and slot_date.weekday() >= 5:
+                continue
+                
+            # Morning slots
+            for hour in range(8, 12):
+                TimeSlot.objects.create(
+                    doctor=doctor,
+                    date=slot_date,
+                    start_time=f"{hour:02d}:00",
+                    end_time=f"{hour:02d}:30",
+                    is_available=True
+                )
+                TimeSlot.objects.create(
+                    doctor=doctor,
+                    date=slot_date,
+                    start_time=f"{hour:02d}:30",
+                    end_time=f"{hour+1:02d}:00",
+                    is_available=True
+                )
+            
+            # Afternoon slots
+            for hour in range(14, 17):
+                TimeSlot.objects.create(
+                    doctor=doctor,
+                    date=slot_date,
+                    start_time=f"{hour:02d}:00",
+                    end_time=f"{hour:02d}:30",
+                    is_available=True
+                )
+                TimeSlot.objects.create(
+                    doctor=doctor,
+                    date=slot_date,
+                    start_time=f"{hour:02d}:30",
+                    end_time=f"{hour+1:02d}:00",
+                    is_available=True
+                )
+    
+    def create_patients(self):
+        """Create sample patients"""
+        self.stdout.write('Creating patients...')
+        
+        patients_data = [
+            {
+                "username": "patient1",
+                "email": "patient1@example.com",
+                "password": "Patient123",
+                "first_name": "Lan",
+                "last_name": "Nguyễn",
+                "user_type": "patient"
+            },
+            {
+                "username": "patient2",
+                "email": "patient2@example.com",
+                "password": "Patient123",
+                "first_name": "Hùng",
+                "last_name": "Trần",
+                "user_type": "patient"
+            },
+            {
+                "username": "patient3",
+                "email": "patient3@example.com",
+                "password": "Patient123",
+                "first_name": "Mai",
+                "last_name": "Phạm",
+                "user_type": "patient"
+            },
+            {
+                "username": "patient4",
+                "email": "patient4@example.com",
+                "password": "Patient123",
+                "first_name": "Tuấn",
+                "last_name": "Lê",
+                "user_type": "patient"
+            },
+            {
+                "username": "patient5",
+                "email": "patient5@example.com",
+                "password": "Patient123",
+                "first_name": "Hương",
+                "last_name": "Vũ",
+                "user_type": "patient"
+            }
+        ]
+        
+        blood_groups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
+        
+        for pat_data in patients_data:
+            # Create user
+            user, created = User.objects.get_or_create(
+                username=pat_data["username"],
+                defaults={
+                    "email": pat_data["email"],
+                    "first_name": pat_data["first_name"],
+                    "last_name": pat_data["last_name"],
+                    "user_type": pat_data["user_type"]
+                }
+            )
+            
+            if created:
+                user.set_password(pat_data["password"])
+                user.save()
+                
+                # Create patient profile
+                Patient.objects.create(
+                    user=user,
+                    gender=random.choice(['M', 'F']),
+                    age=random.randint(18, 70),
+                    blood_group=random.choice(blood_groups),
+                    address=f"Địa chỉ {random.randint(1, 100)}, Phường {random.randint(1, 15)}, Quận {random.randint(1, 12)}, TP.HCM",
+                    phone_number=f"09{random.randint(10000000, 99999999)}",
+                    emergency_contact=f"08{random.randint(10000000, 99999999)}",
+                    medical_history="Không có tiền sử bệnh nghiêm trọng." if random.choice([True, False]) else "Có tiền sử bệnh tim mạch trong gia đình.",
+                    chronic_diseases="Không" if random.choice([True, False]) else random.choice(["Tiểu đường", "Huyết áp cao", "Đau tim"]),
+                    allergies="Không" if random.choice([True, False]) else random.choice(["Hải sản", "Thuốc kháng sinh", "Phấn hoa"])
+                )
+        
+        self.stdout.write(self.style.SUCCESS(f'Created {len(patients_data)} patients'))
+    
+    def create_appointments(self):
+        """Create sample appointments"""
+        self.stdout.write('Creating appointments...')
+        
+        doctors = Doctor.objects.all()
+        patients = Patient.objects.all()
+        
+        if not doctors or not patients:
+            self.stdout.write(self.style.WARNING('No doctors or patients available to create appointments'))
+            return
+        
+        today = datetime.now().date()
+        appointment_status = ['pending', 'confirmed', 'completed', 'cancelled']
+        appointment_types = ['consultation', 'checkup', 'follow_up', 'emergency']
+        
+        # Create some completed past appointments
+        for _ in range(10):
+            doctor = random.choice(doctors)
+            patient = random.choice(patients)
+            appointment_date = today - timedelta(days=random.randint(1, 30))
+            
+            Appointment.objects.create(
+                doctor=doctor,
+                patient=patient,
+                appointment_date=appointment_date,
+                appointment_time=f"{random.randint(8, 16)}:{'00' if random.choice([True, False]) else '30'}",
+                appointment_type=random.choice(appointment_types),
+                reason=random.choice([
+                    "Khám tổng quát",
+                    "Đau đầu kéo dài",
+                    "Khó thở",
+                    "Đau bụng",
+                    "Sốt cao"
+                ]),
+                status='completed',
+                notes=random.choice([
+                    "Bệnh nhân khỏe mạnh, không có vấn đề nghiêm trọng",
+                    "Cần theo dõi thêm, tái khám sau 2 tuần",
+                    "Đã kê đơn thuốc và hướng dẫn cách sử dụng"
+                ]) if random.choice([True, False]) else ""
+            )
+        
+        # Create upcoming appointments with different statuses
+        for _ in range(15):
+            doctor = random.choice(doctors)
+            patient = random.choice(patients)
+            days_ahead = random.randint(0, 14)
+            appointment_date = today + timedelta(days=days_ahead)
+            
+            # Appointments for today should be confirmed or pending
+            status = random.choice(['confirmed', 'pending']) if days_ahead == 0 else random.choice(appointment_status[:3])
+            
+            Appointment.objects.create(
+                doctor=doctor,
+                patient=patient,
+                appointment_date=appointment_date,
+                appointment_time=f"{random.randint(8, 16)}:{'00' if random.choice([True, False]) else '30'}",
+                appointment_type=random.choice(appointment_types),
+                reason=random.choice([
+                    "Khám tổng quát",
+                    "Đau đầu kéo dài",
+                    "Khó thở",
+                    "Đau bụng",
+                    "Sốt cao",
+                    "Nổi mẩn ngứa",
+                    "Đau khớp",
+                    "Đau lưng mãn tính"
+                ]),
+                status=status,
+                notes="" if status in ['pending', 'confirmed'] else random.choice([
+                    "Bệnh nhân khỏe mạnh, không có vấn đề nghiêm trọng",
+                    "Cần theo dõi thêm, tái khám sau 2 tuần",
+                    "Đã kê đơn thuốc và hướng dẫn cách sử dụng"
+                ])
+            )
+        
+        self.stdout.write(self.style.SUCCESS('Created sample appointments'))
+    
+    def create_chatbot_knowledge(self):
+        """Create sample chatbot knowledge base"""
+        self.stdout.write('Creating chatbot knowledge base...')
+        
+        knowledge_data = [
+            {
+                "question": "Trang web này có những chức năng gì?",
+                "answer": "HealthyCare System có các chức năng chính sau:\n- Đặt lịch khám với bác sĩ chuyên khoa\n- Tư vấn sức khỏe qua chatbot AI 24/7\n- Quản lý hồ sơ sức khỏe điện tử\n- Theo dõi lịch sử khám chữa bệnh\n- Tìm kiếm bác sĩ theo chuyên khoa",
+                "keywords": "chức năng, tính năng, sử dụng, website, hệ thống"
+            },
+            {
+                "question": "Làm thế nào để đặt lịch khám?",
+                "answer": "Để đặt lịch khám, bạn cần thực hiện các bước sau:\n1. Đăng nhập vào tài khoản của bạn\n2. Vào mục \"Đặt lịch khám\"\n3. Chọn chuyên khoa và bác sĩ\n4. Chọn ngày giờ phù hợp\n5. Nhập lý do khám và xác nhận\nSau khi đặt lịch, bạn sẽ nhận được thông báo xác nhận qua email và có thể theo dõi trạng thái lịch hẹn trong tài khoản.",
+                "keywords": "đặt lịch, lịch hẹn, book, đăng ký khám"
+            },
+            {
+                "question": "Tôi cần chuẩn bị gì khi đi khám?",
+                "answer": "Khi đến khám bệnh, bạn nên chuẩn bị:\n1. Giấy tờ tùy thân (CMND/CCCD/Hộ chiếu)\n2. Thẻ bảo hiểm y tế (nếu có)\n3. Các kết quả xét nghiệm, chẩn đoán hình ảnh trước đây (nếu có)\n4. Danh sách thuốc đang sử dụng\n5. Ghi chú về các triệu chứng bạn đang gặp phải\n6. Đến trước giờ hẹn 15-30 phút để làm thủ tục",
+                "keywords": "chuẩn bị, đi khám, khám bệnh, giấy tờ"
+            },
+            {
+                "question": "Làm thế nào để hủy hoặc đổi lịch hẹn?",
+                "answer": "Để hủy hoặc đổi lịch hẹn:\n1. Đăng nhập vào tài khoản\n2. Vào mục \"Lịch hẹn của tôi\"\n3. Tìm lịch hẹn cần thay đổi\n4. Chọn \"Hủy lịch\" hoặc \"Đổi lịch\"\n5. Nếu đổi lịch, chọn thời gian mới và xác nhận\n\nLưu ý: Vui lòng hủy/đổi lịch ít nhất 24 giờ trước giờ hẹn để tránh phí phạt hủy muộn.",
+                "keywords": "hủy lịch, đổi lịch, thay đổi, reschedule, cancel"
+            },
+            {
+                "question": "Cách thanh toán phí khám bệnh?",
+                "answer": "HealthyCare System hỗ trợ nhiều phương thức thanh toán:\n1. Thanh toán trực tiếp tại quầy\n2. Thanh toán online qua thẻ ngân hàng\n3. Ví điện tử như MoMo, ZaloPay, VNPay\n4. Chuyển khoản ngân hàng\n\nBạn có thể thanh toán trước khi khám hoặc sau khi khám tùy theo quy định của từng dịch vụ.",
+                "keywords": "thanh toán, phí, chi phí, payment"
+            },
+            {
+                "question": "Hệ thống có hỗ trợ bảo hiểm y tế không?",
+                "answer": "Có, HealthyCare System có hỗ trợ thanh toán bằng bảo hiểm y tế nhà nước và nhiều loại bảo hiểm tư nhân. Khi đăng ký khám, bạn có thể cung cấp thông tin bảo hiểm của mình. Tùy vào loại bảo hiểm và dịch vụ, mức hỗ trợ chi phí sẽ khác nhau. Vui lòng mang theo thẻ bảo hiểm khi đến khám.",
+                "keywords": "bảo hiểm, bhyt, insurance"
+            },
+            {
+                "question": "Có dịch vụ cấp cứu không?",
+                "answer": "HealthyCare System không phải là cơ sở cấp cứu. Nếu bạn đang gặp tình trạng cấp cứu như: đau ngực dữ dội, khó thở nghiêm trọng, chấn thương nặng, ngất xỉu, xuất huyết nhiều - vui lòng gọi số cấp cứu 115 hoặc đến ngay cơ sở y tế cấp cứu gần nhất. \n\nHệ thống của chúng tôi chuyên về đặt lịch khám và tư vấn thông thường.",
+                "keywords": "cấp cứu, khẩn cấp, emergency"
+            }
+        ]
+        
+        for data in knowledge_data:
+            ChatbotKnowledge.objects.get_or_create(
+                question=data["question"],
+                defaults={
+                    "answer": data["answer"],
+                    "keywords": data["keywords"],
+                    "is_active": True
+                }
+            )
+        
+        self.stdout.write(self.style.SUCCESS(f'Created {len(knowledge_data)} chatbot knowledge items'))
+    
+    def create_health_symptoms(self):
+        """Create sample health symptoms"""
+        self.stdout.write('Creating health symptoms...')
+        
+        symptoms_data = [
+            {
+                "name": "Đau đầu",
+                "description": "Đau ở vùng đầu, có thể là đau một bên, đau sau gáy, hoặc đau toàn bộ.",
+                "advice": "Nghỉ ngơi đầy đủ, giảm căng thẳng, uống đủ nước, và có thể dùng thuốc giảm đau nhẹ như paracetamol.",
+                "severity_level": 2
+            },
+            {
+                "name": "Sốt",
+                "description": "Thân nhiệt cao hơn bình thường, thường trên 38°C.",
+                "advice": "Uống nhiều nước, nghỉ ngơi, dùng thuốc hạ sốt như paracetamol nếu cần.",
+                "severity_level": 3
+            },
+            {
+                "name": "Ho",
+                "description": "Phản xạ bảo vệ để làm sạch đường thở.",
+                "advice": "Uống nhiều nước ấm, tránh khói thuốc và chất kích thích, có thể dùng thuốc ho không kê đơn.",
+                "severity_level": 2
+            },
+            {
+                "name": "Đau bụng",
+                "description": "Cảm giác đau hoặc khó chịu ở vùng bụng.",
+                "advice": "Nghỉ ngơi, ăn nhẹ, tránh thực phẩm cay nóng, dầu mỡ.",
+                "severity_level": 3
+            },
+            {
+                "name": "Khó thở",
+                "description": "Cảm giác không lấy đủ không khí, thở gấp hoặc nông.",
+                "advice": "Ngồi thẳng lưng, hít thở sâu và chậm, tránh khu vực bụi bẩn hoặc ô nhiễm.",
+                "severity_level": 4
+            },
+            {
+                "name": "Đau ngực",
+                "description": "Cảm giác đau, tức, nặng hoặc áp lực ở vùng ngực.",
+                "advice": "Đây có thể là dấu hiệu nghiêm trọng. Hãy ngồi nghỉ và gọi cấp cứu nếu đau dữ dội hoặc kéo dài.",
+                "severity_level": 5
+            },
+            {
+                "name": "Mệt mỏi",
+                "description": "Cảm giác kiệt sức, không có năng lượng kéo dài.",
+                "advice": "Đảm bảo ngủ đủ giấc, ăn uống đầy đủ dinh dưỡng và có thể bổ sung vitamin.",
+                "severity_level": 2
+            },
+            {
+                "name": "Chóng mặt",
+                "description": "Cảm giác quay cuồng, mất thăng bằng hoặc sắp ngất.",
+                "advice": "Ngồi hoặc nằm xuống ngay, tránh di chuyển đột ngột, uống nước và thở sâu.",
+                "severity_level": 3
+            },
+            {
+                "name": "Tiêu chảy",
+                "description": "Đi phân lỏng hoặc nước nhiều lần trong ngày.",
+                "advice": "Bù nước và điện giải, ăn thức ăn dễ tiêu như cháo, tránh thức ăn cay, nhiều dầu mỡ.",
+                "severity_level": 3
+            },
+            {
+                "name": "Nổi mẩn",
+                "description": "Da có các vết đỏ, ngứa, hoặc phát ban.",
+                "advice": "Tránh gãi, giữ vùng da sạch sẽ, có thể dùng kem chống ngứa không kê đơn.",
+                "severity_level": 2
+            }
+        ]
+        
+        for data in symptoms_data:
+            HealthSymptom.objects.get_or_create(
+                name=data["name"],
+                defaults={
+                    "description": data["description"],
+                    "advice": data["advice"],
+                    "severity_level": data["severity_level"]
+                }
+            )
+        
+        self.stdout.write(self.style.SUCCESS(f'Created {len(symptoms_data)} health symptoms'))

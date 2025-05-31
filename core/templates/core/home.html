@@ -1,0 +1,211 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}HealthyCare - Hệ thống chăm sóc sức khỏe thông minh{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hero-section {
+        background: linear-gradient(rgba(0, 123, 255, 0.7), rgba(0, 123, 255, 0.9)), url("{% static 'images/hero-bg.jpg' %}");
+        background-size: cover;
+        background-position: center;
+        padding: 100px 0;
+        color: white;
+        border-radius: 10px;
+    }
+    
+    .feature-card {
+        border-radius: 10px;
+        overflow: hidden;
+        transition: transform 0.3s;
+    }
+    
+    .feature-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .feature-icon {
+        font-size: 2.5rem;
+        color: #007bff;
+    }
+    
+    .specialist-card img {
+        height: 200px;
+        object-fit: cover;
+    }
+    
+    .stats-box {
+        padding: 30px;
+        border-radius: 10px;
+        background-color: #f8f9fa;
+        text-align: center;
+        border-bottom: 4px solid #007bff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section mb-5 text-center">
+    <div class="container py-5">
+        <h1 class="display-4 font-weight-bold">Chăm sóc sức khỏe thông minh</h1>
+        <p class="lead mb-4">Kết hợp công nghệ AI và đội ngũ y bác sĩ chuyên nghiệp để chăm sóc sức khỏe của bạn</p>
+        <div class="d-flex justify-content-center">
+            <a href="{% url 'doctors:list' %}" class="btn btn-light btn-lg mr-3">
+                <i class="fas fa-user-md mr-2"></i>Tìm bác sĩ
+            </a>
+            <a href="{% url 'chatbot:home' %}" class="btn btn-outline-light btn-lg">
+                <i class="fas fa-robot mr-2"></i>Tư vấn AI
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="mb-5">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="font-weight-bold">Tính năng nổi bật</h2>
+            <p class="text-muted">Trải nghiệm chăm sóc sức khỏe hiện đại và tiện lợi</p>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 feature-card shadow-sm">
+                    <div class="card-body text-center">
+                        <div class="mb-3">
+                            <i class="fas fa-calendar-check feature-icon"></i>
+                        </div>
+                        <h5 class="card-title font-weight-bold">Đặt lịch trực tuyến</h5>
+                        <p class="card-text">Dễ dàng đặt lịch khám với bác sĩ theo thời gian mong muốn mà không cần xếp hàng chờ đợi.</p>
+                    </div>
+                    <div class="card-footer bg-white border-0">
+                        <a href="{% url 'appointments:book' %}" class="btn btn-outline-primary btn-sm">Đặt lịch ngay</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 feature-card shadow-sm">
+                    <div class="card-body text-center">
+                        <div class="mb-3">
+                            <i class="fas fa-robot feature-icon"></i>
+                        </div>
+                        <h5 class="card-title font-weight-bold">Tư vấn AI</h5>
+                        <p class="card-text">Trò chuyện với chatbot AI thông minh để nhận tư vấn sức khỏe sơ bộ và câu trả lời cho các câu hỏi y tế.</p>
+                    </div>
+                    <div class="card-footer bg-white border-0">
+                        <a href="{% url 'chatbot:home' %}" class="btn btn-outline-primary btn-sm">Tư vấn ngay</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 feature-card shadow-sm">
+                    <div class="card-body text-center">
+                        <div class="mb-3">
+                            <i class="fas fa-file-medical feature-icon"></i>
+                        </div>
+                        <h5 class="card-title font-weight-bold">Hồ sơ sức khỏe</h5>
+                        <p class="card-text">Quản lý hồ sơ y tế cá nhân, lịch sử khám bệnh và đơn thuốc tại một nơi duy nhất và bảo mật.</p>
+                    </div>
+                    <div class="card-footer bg-white border-0">
+                        <a href="{% url 'patients:profile' %}" class="btn btn-outline-primary btn-sm">Xem hồ sơ</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Specialist Section -->
+<section class="mb-5">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="font-weight-bold">Đội ngũ chuyên gia</h2>
+            <p class="text-muted">Các bác sĩ hàng đầu trong nhiều chuyên khoa</p>
+        </div>
+        
+        <div class="row">
+            {% for doctor in top_doctors %}
+            <div class="col-md-3 mb-4">
+                <div class="card specialist-card shadow-sm">
+                    <img src="{{ doctor.user.avatar.url|default:'https://via.placeholder.com/300x200?text=Doctor' }}" class="card-img-top" alt="{{ doctor.user.get_full_name }}">
+                    <div class="card-body">
+                        <h5 class="card-title mb-1">BS. {{ doctor.user.get_full_name }}</h5>
+                        <p class="text-muted small mb-2">
+                            {% for spec in doctor.specializations.all|slice:":2" %}
+                                {{ spec.name }}{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                        </p>
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="text-warning mr-2">
+                                {% for i in "12345" %}
+                                    {% if forloop.counter <= doctor.rating %}
+                                        <i class="fas fa-star"></i>
+                                    {% elif forloop.counter <= doctor.rating|add:0.5 %}
+                                        <i class="fas fa-star-half-alt"></i>
+                                    {% else %}
+                                        <i class="far fa-star"></i>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                            <small class="text-muted">{{ doctor.rating }} ({{ doctor.total_reviews }})</small>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-white text-center border-0 pt-0">
+                        <a href="{% url 'doctors:detail' doctor.id %}" class="btn btn-sm btn-outline-primary">Xem thông tin</a>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col text-center">
+                <p>Chưa có bác sĩ nào.</p>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="text-center mt-3">
+            <a href="{% url 'doctors:list' %}" class="btn btn-outline-primary">
+                <i class="fas fa-user-md mr-2"></i>Xem tất cả bác sĩ
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Stats Section -->
+<section class="mb-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-3 mb-4">
+                <div class="stats-box shadow-sm">
+                    <i class="fas fa-user-md mb-3 text-primary" style="font-size: 2.5rem;"></i>
+                    <h3 class="font-weight-bold">{{ total_doctors }}</h3>
+                    <p class="text-muted mb-0">Bác sĩ</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="stats-box shadow-sm">
+                    <i class="fas fa-stethoscope mb-3 text-primary" style="font-size: 2.5rem;"></i>
+                    <h3 class="font-weight-bold">{{ total_specializations }}</h3>
+                    <p class="text-muted mb-0">Chuyên khoa</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="stats-box shadow-sm">
+                    <i class="fas fa-user-injured mb-3 text-primary" style="font-size: 2.5rem;"></i>
+                    <h3 class="font-weight-bold">{{ total_patients }}</h3>
+                    <p class="text-muted mb-0">Bệnh nhân</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="stats-box shadow-sm">
+                    <i class="fas fa-calendar-check mb-3 text-primary" style="font-size: 2.5rem;"></i>
+                    <h3 class="font-weight-bold">{{ total_appointments }}</h3>
+                    <p class="text-muted mb-0">Lịch hẹn</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

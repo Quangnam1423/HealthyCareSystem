@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}Đăng ký - HealthyCare{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-user-plus mr-2"></i>Đăng ký tài khoản</h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            {{ form.username|as_crispy_field }}
+                            {{ form.email|as_crispy_field }}
+                            {{ form.password1|as_crispy_field }}
+                            {{ form.password2|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.first_name|as_crispy_field }}
+                            {{ form.last_name|as_crispy_field }}
+                            {{ form.phone|as_crispy_field }}
+                            {{ form.user_type|as_crispy_field }}
+                        </div>
+                    </div>
+
+                    <div class="form-group mt-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="agreement" required>
+                            <label class="form-check-label" for="agreement">
+                                Tôi đồng ý với <a href="#" data-toggle="modal" data-target="#termsModal">điều khoản sử dụng</a> và <a href="#" data-toggle="modal" data-target="#privacyModal">chính sách bảo mật</a>.
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-block mt-4">Đăng ký</button>
+                </form>
+                <hr>
+                <div class="text-center">
+                    <p>Đã có tài khoản? <a href="{% url 'accounts:login' %}" class="text-primary">Đăng nhập</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Terms of Service Modal -->
+<div class="modal fade" id="termsModal" tabindex="-1" role="dialog" aria-labelledby="termsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="termsModalLabel">Điều khoản sử dụng</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <h5>1. Giới thiệu</h5>
+                <p>Chào mừng bạn đến với HealthyCareSystem. Khi bạn sử dụng dịch vụ của chúng tôi, bạn đồng ý với những điều khoản này. Vui lòng đọc kỹ.</p>
+                
+                <h5>2. Sử dụng dịch vụ</h5>
+                <p>HealthyCareSystem cung cấp dịch vụ đặt lịch khám bệnh và tư vấn sức khỏe. Bạn đồng ý sử dụng dịch vụ cho mục đích cá nhân và không vi phạm luật pháp.</p>
+                
+                <h5>3. Tài khoản</h5>
+                <p>Bạn chịu trách nhiệm bảo vệ mật khẩu và thông tin tài khoản của mình. Thông báo ngay cho chúng tôi nếu phát hiện truy cập trái phép.</p>
+                
+                <h5>4. Nội dung</h5>
+                <p>Bạn chịu trách nhiệm về thông tin cá nhân được cung cấp. Không chia sẻ thông tin sai lệch hoặc gây hiểu nhầm.</p>
+                
+                <h5>5. Thay đổi điều khoản</h5>
+                <p>Chúng tôi có thể thay đổi điều khoản và sẽ thông báo trước khi thực hiện.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Privacy Policy Modal -->
+<div class="modal fade" id="privacyModal" tabindex="-1" role="dialog" aria-labelledby="privacyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="privacyModalLabel">Chính sách bảo mật</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <h5>1. Thu thập thông tin</h5>
+                <p>Chúng tôi thu thập thông tin cá nhân khi bạn đăng ký, đặt lịch, hoặc sử dụng chatbot. Thông tin bao gồm tên, email, số điện thoại, và thông tin sức khỏe.</p>
+                
+                <h5>2. Sử dụng thông tin</h5>
+                <p>Thông tin của bạn được sử dụng để cung cấp dịch vụ, liên hệ với bạn, và cải thiện trải nghiệm người dùng.</p>
+                
+                <h5>3. Bảo vệ thông tin</h5>
+                <p>Chúng tôi áp dụng các biện pháp an ninh để bảo vệ thông tin của bạn khỏi truy cập trái phép.</p>
+                
+                <h5>4. Chia sẻ thông tin</h5>
+                <p>Thông tin của bạn chỉ được chia sẻ với các bác sĩ và nhân viên y tế liên quan đến việc chăm sóc sức khỏe của bạn.</p>
+                
+                <h5>5. Cookie và công nghệ tương tự</h5>
+                <p>Chúng tôi sử dụng cookie để cải thiện trải nghiệm người dùng và phân tích việc sử dụng website.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

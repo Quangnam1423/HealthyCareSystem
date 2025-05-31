@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Danh sách bệnh nhân - HealthyCare{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0"><i class="fas fa-users mr-2"></i>Danh sách bệnh nhân</h4>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            </div>
+                            <input type="text" id="searchInput" class="form-control" placeholder="Tìm kiếm bệnh nhân...">
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-md-right mt-3 mt-md-0">
+                        <div class="btn-group">
+                            <button id="exportExcel" class="btn btn-sm btn-success">
+                                <i class="fas fa-file-excel mr-1"></i>Excel
+                            </button>
+                            <button id="exportPDF" class="btn btn-sm btn-danger">
+                                <i class="fas fa-file-pdf mr-1"></i>PDF
+                            </button>
+                            <button id="printList" class="btn btn-sm btn-info">
+                                <i class="fas fa-print mr-1"></i>In
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-hover" id="patientTable">
+                    <thead>
+                        <tr>
+                            <th>Mã BN</th>
+                            <th>Họ tên</th>
+                            <th>Giới tính</th>
+                            <th>Ngày sinh</th>
+                            <th>Số điện thoại</th>
+                            <th>Địa chỉ</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for patient in patients %}
+                        <tr>
+                            <td>{{ patient.patient_id }}</td>
+                            <td>{{ patient.user.get_full_name }}</td>
+                            <td>{{ patient.get_gender_display }}</td>
+                            <td>{{ patient.user.date_of_birth|date:"d/m/Y"|default:"--" }}</td>
+                            <td>{{ patient.user.phone|default:"--" }}</td>
+                            <td>{{ patient.user.address|truncatechars:30|default:"--" }}</td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{% url 'patients:detail' patient.id %}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'appointments:create_for_patient' patient.id %}" class="btn btn-sm btn-success">
+                                        <i class="fas fa-calendar-plus"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-3">Không có bệnh nhân nào.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tableexport.jquery.plugin@1.10.21/tableExport.min.js"></script>
+
+<script>
+    $(document).ready(function() {
+        // Khởi tạo DataTable
+        var table = $('#patientTable').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/vi.json'
+            },
+            "columnDefs": [
+                { "orderable": false, "targets": 6 }
+            ],
+            "order": [[0, "asc"]]
+        });
+        
+        // Tìm kiếm
+        $('#searchInput').on('keyup', function() {
+            table.search(this.value).draw();
+        });
+        
+        // In danh sách
+        $('#printList').on('click', function() {
+            window.print();
+        });
+        
+        // Export PDF
+        $('#exportPDF').on('click', function() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            doc.setFontSize(18);
+            doc.text("Danh sách bệnh nhân - HealthyCare", 14, 22);
+            
+            doc.setFontSize(12);
+            doc.text("Ngày xuất báo cáo: " + new Date().toLocaleDateString('vi-VN'), 14, 30);
+            
+            // Export table to PDF
+            doc.autoTable({ 
+                html: '#patientTable',
+                startY: 35,
+                headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+                alternateRowStyles: { fillColor: [240, 240, 240] },
+                columnStyles: { 6: { width: 0, cellWidth: 0 } }, // Hide action column
+                columns: [0, 1, 2, 3, 4, 5], // Exclude action column
+                margin: { top: 35 }
+            });
+            
+            doc.save('danh-sach-benh-nhan.pdf');
+        });
+        
+        // Export Excel
+        $('#exportExcel').on('click', function() {
+            $('#patientTable').tableExport({
+                headers: true,
+                footers: true,
+                formats: ['xlsx'],
+                filename: 'danh-sach-benh-nhan',
+                bootstrap: true,
+                exportButtons: false,
+                position: 'bottom',
+                ignoreColumns: [6], // Exclude action column
+                ignoreCols: null,
+                trimWhitespace: true,
+                RTL: false,
+                sheetname: 'Danh sach benh nhan'
+            });
+        });
+    });
+</script>
+{% endblock %}

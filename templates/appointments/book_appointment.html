@@ -1,0 +1,490 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Đặt lịch hẹn - HealthyCare{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<style>
+    .doctor-card {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+    .doctor-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+    }
+    .doctor-card.selected {
+        border: 2px solid #28a745;
+        box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3) !important;
+    }
+    .time-slot {
+        display: inline-block;
+        padding: 8px 12px;
+        margin: 5px;
+        border-radius: 4px;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .time-slot:hover {
+        background-color: #e9ecef;
+    }
+    .time-slot.selected {
+        background-color: #28a745;
+        color: white;
+        border-color: #28a745;
+    }
+    .time-slot.disabled {
+        background-color: #f1f1f1;
+        color: #b1b1b1;
+        cursor: not-allowed;
+        text-decoration: line-through;
+    }
+    .step-indicator {
+        margin-bottom: 20px;
+    }
+    .step-indicator .step {
+        display: flex;
+        align-items: center;
+    }
+    .step-indicator .step-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: #e9ecef;
+        color: #6c757d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-right: 10px;
+    }
+    .step-indicator .step.active .step-icon {
+        background-color: #007bff;
+        color: white;
+    }
+    .step-indicator .step.completed .step-icon {
+        background-color: #28a745;
+        color: white;
+    }
+    .step-indicator .step-text {
+        font-weight: 500;
+    }
+    .step-indicator .step.active .step-text {
+        color: #007bff;
+    }
+    .step-indicator .step.completed .step-text {
+        color: #28a745;
+    }
+    .step-content {
+        display: none;
+    }
+    .step-content.active {
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4 class="mb-0"><i class="fas fa-calendar-plus mr-2"></i>Đặt lịch hẹn</h4>
+                <a href="{% url 'appointments:list' %}" class="btn btn-sm btn-light">
+                    <i class="fas fa-arrow-left mr-1"></i>Quay lại
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Step Indicator -->
+            <div class="row step-indicator mb-4">
+                <div class="col-md-4 step active" id="step1-indicator">
+                    <div class="step-icon">1</div>
+                    <div class="step-text">Chọn bác sĩ</div>
+                </div>
+                <div class="col-md-4 step" id="step2-indicator">
+                    <div class="step-icon">2</div>
+                    <div class="step-text">Chọn ngày và giờ</div>
+                </div>
+                <div class="col-md-4 step" id="step3-indicator">
+                    <div class="step-icon">3</div>
+                    <div class="step-text">Xác nhận thông tin</div>
+                </div>
+            </div>
+            
+            <form id="appointmentForm" method="post">
+                {% csrf_token %}
+                <input type="hidden" name="doctor" id="doctor_id" value="">
+                <input type="hidden" name="appointment_date" id="appointment_date" value="">
+                <input type="hidden" name="appointment_time" id="appointment_time" value="">
+                
+                <!-- Step 1: Choose Doctor -->
+                <div class="step-content active" id="step1">
+                    <div class="form-group">
+                        <label for="specialization">Chuyên khoa:</label>
+                        <select class="form-control" id="specialization">
+                            <option value="">Tất cả chuyên khoa</option>
+                            {% for spec in specializations %}
+                            <option value="{{ spec.id }}">{{ spec.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="doctor-search">Tìm kiếm bác sĩ:</label>
+                        <input type="text" class="form-control" id="doctor-search" placeholder="Nhập tên bác sĩ...">
+                    </div>
+                    
+                    <div class="row" id="doctorsList">
+                        {% for doctor in doctors %}
+                        <div class="col-md-6 col-lg-4 mb-4 doctor-item" data-id="{{ doctor.id }}" data-specializations="{% for spec in doctor.specializations.all %}{{ spec.id }}{% if not forloop.last %},{% endif %}{% endfor %}">
+                            <div class="card doctor-card">
+                                <div class="card-body">
+                                    <div class="text-center mb-3">
+                                        {% if doctor.user.avatar %}
+                                        <img src="{{ doctor.user.avatar.url }}" alt="{{ doctor.user.get_full_name }}" class="rounded-circle" style="width: 80px; height: 80px; object-fit: cover;">
+                                        {% else %}
+                                        <img src="{% static 'images/doctor-default.jpg' %}" alt="{{ doctor.user.get_full_name }}" class="rounded-circle" style="width: 80px; height: 80px; object-fit: cover;">
+                                        {% endif %}
+                                    </div>
+                                    <h5 class="card-title text-center">BS. {{ doctor.user.get_full_name }}</h5>
+                                    <p class="card-text text-center small text-muted">
+                                        {% for spec in doctor.specializations.all %}
+                                            {% if forloop.first %}{{ spec.name }}{% endif %}
+                                        {% endfor %}
+                                        {% if doctor.specializations.count > 1 %}
+                                            +{{ doctor.specializations.count|add:"-1" }} chuyên khoa
+                                        {% endif %}
+                                    </p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="rating">
+                                            <span class="text-warning">
+                                                <i class="fas fa-star"></i> {{ doctor.rating }}
+                                            </span> ({{ doctor.total_reviews }})
+                                        </div>
+                                        <div class="price">{{ doctor.consultation_fee|floatformat:0 }} đ</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="col-12 text-center py-5">
+                            <p class="text-muted">Không tìm thấy bác sĩ. Vui lòng thử lại.</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <button type="button" id="step1Next" class="btn btn-primary" disabled>
+                            <i class="fas fa-arrow-right mr-1"></i>Tiếp tục
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Step 2: Choose Date & Time -->
+                <div class="step-content" id="step2">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="appointment_date_picker">Chọn ngày:</label>
+                                <input type="text" id="appointment_date_picker" class="form-control" placeholder="Chọn ngày khám">
+                            </div>
+                            <div id="doctor-schedule-info" class="mb-4">
+                                <h6>Lịch làm việc của bác sĩ:</h6>
+                                <ul class="list-group list-group-flush" id="schedule-list">
+                                    <!-- Schedule will be loaded here -->
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Chọn giờ:</label>
+                                <div class="time-slots" id="time-slots-container">
+                                    <!-- Time slots will be loaded here -->
+                                    <p class="text-muted">Vui lòng chọn ngày để xem các khung giờ có sẵn</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <button type="button" id="step2Prev" class="btn btn-secondary mr-2">
+                            <i class="fas fa-arrow-left mr-1"></i>Quay lại
+                        </button>
+                        <button type="button" id="step2Next" class="btn btn-primary" disabled>
+                            <i class="fas fa-arrow-right mr-1"></i>Tiếp tục
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Step 3: Confirm -->
+                <div class="step-content" id="step3">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Thông tin bác sĩ</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="doctor-info">
+                                        <!-- Doctor info will be loaded here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Chi tiết lịch hẹn</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p><strong>Ngày khám:</strong> <span id="confirm-date"></span></p>
+                                    <p><strong>Giờ khám:</strong> <span id="confirm-time"></span></p>
+                                    <p><strong>Chi phí khám:</strong> <span id="confirm-fee"></span></p>
+                                    
+                                    <div class="form-group mt-4">
+                                        <label for="appointment_type">Loại khám:</label>
+                                        <select class="form-control" id="appointment_type" name="appointment_type" required>
+                                            <option value="">-- Chọn loại khám --</option>
+                                            <option value="consultation">Tư vấn</option>
+                                            <option value="checkup">Khám tổng quát</option>
+                                            <option value="follow_up">Tái khám</option>
+                                            <option value="emergency">Cấp cứu</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="reason">Lý do khám:</label>
+                                        <textarea class="form-control" id="reason" name="reason" rows="3" placeholder="Mô tả ngắn gọn lý do khám bệnh" required></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <button type="button" id="step3Prev" class="btn btn-secondary mr-2">
+                            <i class="fas fa-arrow-left mr-1"></i>Quay lại
+                        </button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-check-circle mr-1"></i>Xác nhận đặt lịch
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/vn.js"></script>
+<script>
+    $(document).ready(function() {
+        // Step navigation
+        function goToStep(step) {
+            $('.step-content').removeClass('active');
+            $('#step' + step).addClass('active');
+            
+            $('.step').removeClass('active completed');
+            $('#step' + step + '-indicator').addClass('active');
+            
+            for (let i = 1; i < step; i++) {
+                $('#step' + i + '-indicator').addClass('completed');
+            }
+        }
+        
+        // Step 1: Doctor selection
+        $('.doctor-card').on('click', function() {
+            $('.doctor-card').removeClass('selected');
+            $(this).addClass('selected');
+            
+            const doctorId = $(this).closest('.doctor-item').data('id');
+            $('#doctor_id').val(doctorId);
+            $('#step1Next').prop('disabled', false);
+        });
+        
+        $('#step1Next').on('click', function() {
+            if ($('#doctor_id').val()) {
+                goToStep(2);
+                loadDoctorSchedule($('#doctor_id').val());
+            } else {
+                alert('Vui lòng chọn bác sĩ');
+            }
+        });
+        
+        // Filter doctors by specialization
+        $('#specialization').on('change', function() {
+            const specId = $(this).val();
+            
+            if (!specId) {
+                $('.doctor-item').show();
+                return;
+            }
+            
+            $('.doctor-item').each(function() {
+                const doctorSpecs = $(this).data('specializations').toString().split(',');
+                if (doctorSpecs.includes(specId)) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            });
+        });
+        
+        // Search doctors
+        $('#doctor-search').on('keyup', function() {
+            const searchTerm = $(this).val().toLowerCase();
+            
+            if (!searchTerm) {
+                $('.doctor-item').show();
+                return;
+            }
+            
+            $('.doctor-item').each(function() {
+                const doctorName = $(this).find('.card-title').text().toLowerCase();
+                if (doctorName.includes(searchTerm)) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            });
+        });
+        
+        // Step 2: Date and time selection
+        let datePicker = flatpickr("#appointment_date_picker", {
+            locale: "vn",
+            dateFormat: "Y-m-d",
+            minDate: "today",
+            disable: [
+                function(date) {
+                    // Disable Sundays and Saturdays
+                    return (date.getDay() === 0); // 0 is Sunday
+                }
+            ],
+            onChange: function(selectedDates, dateStr) {
+                $('#appointment_date').val(dateStr);
+                loadAvailableTimeSlots(dateStr);
+            }
+        });
+        
+        function loadDoctorSchedule(doctorId) {
+            // In a real application, this would be an AJAX call to get the doctor's schedule
+            // For now, we'll just mock up some schedule data
+            
+            const scheduleList = $('#schedule-list');
+            scheduleList.empty();
+            
+            // Mock data - replace with actual API call in production
+            const scheduleData = [
+                { day: 'Thứ 2', hours: '8:00 - 12:00, 13:30 - 17:00' },
+                { day: 'Thứ 3', hours: '8:00 - 12:00, 13:30 - 17:00' },
+                { day: 'Thứ 4', hours: '8:00 - 12:00, 13:30 - 17:00' },
+                { day: 'Thứ 5', hours: '8:00 - 12:00, 13:30 - 17:00' },
+                { day: 'Thứ 6', hours: '8:00 - 12:00, 13:30 - 17:00' },
+                { day: 'Thứ 7', hours: '8:00 - 12:00' }
+            ];
+            
+            scheduleData.forEach(item => {
+                scheduleList.append(`
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>${item.day}</span>
+                        <span>${item.hours}</span>
+                    </li>
+                `);
+            });
+            
+            // Also load doctor info for the confirmation step
+            const doctorName = $('.doctor-item[data-id="' + doctorId + '"] .card-title').text();
+            const doctorSpecialty = $('.doctor-item[data-id="' + doctorId + '"] .card-text').text();
+            const doctorImage = $('.doctor-item[data-id="' + doctorId + '"] img').attr('src');
+            const doctorFee = $('.doctor-item[data-id="' + doctorId + '"] .price').text();
+            
+            $('#doctor-info').html(`
+                <div class="text-center mb-3">
+                    <img src="${doctorImage}" alt="${doctorName}" class="rounded-circle" style="width: 100px; height: 100px; object-fit: cover;">
+                </div>
+                <h5 class="text-center">${doctorName}</h5>
+                <p class="text-center text-muted">${doctorSpecialty}</p>
+                <hr>
+                <p><strong>Chi phí khám:</strong> ${doctorFee}</p>
+            `);
+            
+            // Set fee in the confirm section
+            $('#confirm-fee').text(doctorFee);
+        }
+        
+        function loadAvailableTimeSlots(selectedDate) {
+            const timeSlotsContainer = $('#time-slots-container');
+            timeSlotsContainer.empty();
+            
+            // Mock data - replace with actual API call in production
+            const timeSlots = [
+                { time: '08:00', available: true },
+                { time: '08:30', available: true },
+                { time: '09:00', available: true },
+                { time: '09:30', available: false },
+                { time: '10:00', available: true },
+                { time: '10:30', available: true },
+                { time: '11:00', available: false },
+                { time: '13:30', available: true },
+                { time: '14:00', available: true },
+                { time: '14:30', available: true },
+                { time: '15:00', available: false },
+                { time: '15:30', available: true },
+                { time: '16:00', available: true },
+                { time: '16:30', available: true }
+            ];
+            
+            timeSlots.forEach(slot => {
+                const timeSlot = $(`<div class="time-slot ${slot.available ? '' : 'disabled'}">${slot.time}</div>`);
+                
+                if (slot.available) {
+                    timeSlot.on('click', function() {
+                        $('.time-slot').removeClass('selected');
+                        $(this).addClass('selected');
+                        $('#appointment_time').val(slot.time);
+                        $('#step2Next').prop('disabled', false);
+                        
+                        // Update confirmation info
+                        $('#confirm-date').text(selectedDate);
+                        $('#confirm-time').text(slot.time);
+                    });
+                }
+                
+                timeSlotsContainer.append(timeSlot);
+            });
+        }
+        
+        // Step navigation buttons
+        $('#step2Prev').on('click', function() {
+            goToStep(1);
+        });
+        
+        $('#step2Next').on('click', function() {
+            if ($('#appointment_date').val() && $('#appointment_time').val()) {
+                goToStep(3);
+            } else {
+                alert('Vui lòng chọn ngày và giờ khám');
+            }
+        });
+        
+        $('#step3Prev').on('click', function() {
+            goToStep(2);
+        });
+        
+        // Form submission
+        $('#appointmentForm').on('submit', function(e) {
+            if (!$('#appointment_type').val() || !$('#reason').val()) {
+                alert('Vui lòng nhập đầy đủ thông tin');
+                e.preventDefault();
+                return false;
+            }
+        });
+    });
+</script>
+{% endblock %}

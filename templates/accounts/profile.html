@@ -1,0 +1,366 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}Hồ sơ người dùng - HealthyCare{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-user-circle mr-2"></i>Thông tin cá nhân</h4>
+            </div>
+            <div class="card-body text-center">
+                {% if user.avatar %}
+                    <img src="{{ user.avatar.url }}" alt="{{ user.get_full_name }}" class="rounded-circle mb-3" width="150" height="150">
+                {% else %}
+                    <img src="https://via.placeholder.com/150" alt="{{ user.get_full_name }}" class="rounded-circle mb-3" width="150" height="150">
+                {% endif %}
+                
+                <h5 class="font-weight-bold mb-0">{{ user.get_full_name }}</h5>
+                <p class="text-muted">{{ user.get_user_type_display }}</p>
+                
+                <hr>
+                
+                <div class="text-left">
+                    <p><strong><i class="fas fa-envelope mr-2"></i>Email:</strong> {{ user.email }}</p>
+                    <p><strong><i class="fas fa-phone mr-2"></i>Điện thoại:</strong> {{ user.phone|default:"Chưa cập nhật" }}</p>
+                    <p><strong><i class="fas fa-calendar mr-2"></i>Ngày sinh:</strong> {{ user.date_of_birth|date:"d/m/Y"|default:"Chưa cập nhật" }}</p>
+                    <p><strong><i class="fas fa-map-marker-alt mr-2"></i>Địa chỉ:</strong> {{ user.address|default:"Chưa cập nhật" }}</p>
+                </div>
+                
+                <div class="mt-3">
+                    <a href="#" class="btn btn-outline-primary btn-sm" data-toggle="modal" data-target="#updateProfileModal">
+                        <i class="fas fa-edit mr-1"></i>Cập nhật thông tin
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-shield-alt mr-2"></i>Bảo mật</h5>
+            </div>
+            <div class="card-body">
+                <a href="#" class="btn btn-outline-secondary btn-block" data-toggle="modal" data-target="#changePasswordModal">
+                    <i class="fas fa-key mr-2"></i>Đổi mật khẩu
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        {% if user.user_type == 'patient' %}
+            <!-- Patient Specific Content -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-calendar-check mr-2"></i>Lịch hẹn gần đây</h5>
+                    <a href="{% url 'appointments:list' %}" class="text-white">
+                        <i class="fas fa-external-link-alt"></i> Xem tất cả
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Ngày</th>
+                                    <th>Giờ</th>
+                                    <th>Bác sĩ</th>
+                                    <th>Lý do khám</th>
+                                    <th>Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for appointment in recent_appointments %}
+                                <tr>
+                                    <td>{{ appointment.appointment_date|date:"d/m/Y" }}</td>
+                                    <td>{{ appointment.appointment_time|time:"H:i" }}</td>
+                                    <td>BS. {{ appointment.doctor.user.get_full_name }}</td>
+                                    <td>{{ appointment.reason|truncatechars:30 }}</td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if appointment.status == 'pending' %}badge-warning
+                                            {% elif appointment.status == 'confirmed' %}badge-success
+                                            {% elif appointment.status == 'completed' %}badge-info
+                                            {% elif appointment.status == 'cancelled' %}badge-danger
+                                            {% endif %}">
+                                            {{ appointment.get_status_display }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4">Bạn chưa có lịch hẹn nào.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer text-center">
+                    <a href="{% url 'appointments:book' %}" class="btn btn-primary">
+                        <i class="fas fa-calendar-plus mr-2"></i>Đặt lịch hẹn mới
+                    </a>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><i class="fas fa-heartbeat mr-2"></i>Thông tin sức khỏe</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if patient %}
+                                <p><strong>Nhóm máu:</strong> {{ patient.blood_type|default:"Chưa cập nhật" }}</p>
+                                <p><strong>Chiều cao:</strong> {% if patient.height %}{{ patient.height }} cm{% else %}Chưa cập nhật{% endif %}</p>
+                                <p><strong>Cân nặng:</strong> {% if patient.weight %}{{ patient.weight }} kg{% else %}Chưa cập nhật{% endif %}</p>
+                                <p><strong>Dị ứng:</strong> {{ patient.allergies|default:"Không có" }}</p>
+                                <hr>
+                                <a href="{% url 'patients:edit_profile' %}" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-edit mr-1"></i>Cập nhật
+                                </a>
+                            {% else %}
+                                <p class="text-center">Vui lòng cập nhật thông tin sức khỏe của bạn.</p>
+                                <div class="text-center">
+                                    <a href="{% url 'patients:edit_profile' %}" class="btn btn-primary">
+                                        <i class="fas fa-edit mr-2"></i>Cập nhật ngay
+                                    </a>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><i class="fas fa-robot mr-2"></i>Tư vấn AI</h5>
+                        </div>
+                        <div class="card-body text-center">
+                            <p>Hãy để AI giúp bạn tư vấn sức khỏe ban đầu.</p>
+                            <p>Đặt câu hỏi và nhận tư vấn nhanh chóng.</p>
+                            <a href="{% url 'chatbot:home' %}" class="btn btn-primary">
+                                <i class="fas fa-comments mr-2"></i>Bắt đầu tư vấn
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% elif user.user_type == 'doctor' %}
+            <!-- Doctor Specific Content -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-calendar-check mr-2"></i>Lịch hẹn hôm nay</h5>
+                    <a href="{% url 'appointments:list' %}" class="text-white">
+                        <i class="fas fa-external-link-alt"></i> Xem tất cả
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Giờ</th>
+                                    <th>Bệnh nhân</th>
+                                    <th>Lý do khám</th>
+                                    <th>Trạng thái</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for appointment in today_appointments %}
+                                <tr>
+                                    <td>{{ appointment.appointment_time|time:"H:i" }}</td>
+                                    <td>{{ appointment.patient.user.get_full_name }}</td>
+                                    <td>{{ appointment.reason|truncatechars:30 }}</td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if appointment.status == 'pending' %}badge-warning
+                                            {% elif appointment.status == 'confirmed' %}badge-success
+                                            {% elif appointment.status == 'completed' %}badge-info
+                                            {% elif appointment.status == 'cancelled' %}badge-danger
+                                            {% endif %}">
+                                            {{ appointment.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'appointments:detail' appointment.id %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4">Hôm nay bạn không có lịch hẹn nào.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><i class="fas fa-user-md mr-2"></i>Thông tin chuyên môn</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if doctor %}
+                                <p><strong>Mã bác sĩ:</strong> {{ doctor.doctor_id }}</p>
+                                <p><strong>Chuyên khoa:</strong> 
+                                    {% for spec in doctor.specializations.all %}
+                                        {{ spec.name }}{% if not forloop.last %}, {% endif %}
+                                    {% empty %}
+                                        Chưa cập nhật
+                                    {% endfor %}
+                                </p>
+                                <p><strong>Kinh nghiệm:</strong> {{ doctor.years_of_experience }} năm</p>
+                                <p><strong>Phí tư vấn:</strong> {{ doctor.consultation_fee|floatformat:0 }} VND</p>
+                                <hr>
+                                <a href="{% url 'doctors:profile' %}" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-edit mr-1"></i>Cập nhật
+                                </a>
+                            {% else %}
+                                <p class="text-center">Vui lòng cập nhật thông tin chuyên môn của bạn.</p>
+                                <div class="text-center">
+                                    <a href="{% url 'doctors:profile' %}" class="btn btn-primary">
+                                        <i class="fas fa-edit mr-2"></i>Cập nhật ngay
+                                    </a>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><i class="fas fa-clock mr-2"></i>Lịch làm việc</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if doctor.schedules.all %}
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Ngày</th>
+                                                <th>Giờ bắt đầu</th>
+                                                <th>Giờ kết thúc</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for schedule in doctor.schedules.all %}
+                                                <tr>
+                                                    <td>{{ schedule.get_day_of_week_display }}</td>
+                                                    <td>{{ schedule.start_time|time:"H:i" }}</td>
+                                                    <td>{{ schedule.end_time|time:"H:i" }}</td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <p class="text-center">Bạn chưa cập nhật lịch làm việc.</p>
+                            {% endif %}
+                            <div class="text-center mt-3">
+                                <a href="{% url 'doctors:schedule' %}" class="btn btn-primary">
+                                    <i class="fas fa-edit mr-2"></i>Quản lý lịch làm việc
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Update Profile Modal -->
+<div class="modal fade" id="updateProfileModal" tabindex="-1" role="dialog" aria-labelledby="updateProfileModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="updateProfileModalLabel">Cập nhật thông tin cá nhân</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form method="post" action="{% url 'accounts:profile' %}" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="first_name">Họ</label>
+                        <input type="text" class="form-control" id="first_name" name="first_name" value="{{ user.first_name }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="last_name">Tên</label>
+                        <input type="text" class="form-control" id="last_name" name="last_name" value="{{ user.last_name }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">Số điện thoại</label>
+                        <input type="text" class="form-control" id="phone" name="phone" value="{{ user.phone|default:'' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="date_of_birth">Ngày sinh</label>
+                        <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" value="{{ user.date_of_birth|date:'Y-m-d' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="address">Địa chỉ</label>
+                        <textarea class="form-control" id="address" name="address" rows="3">{{ user.address|default:'' }}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="avatar">Ảnh đại diện</label>
+                        <input type="file" class="form-control-file" id="avatar" name="avatar">
+                        {% if user.avatar %}
+                        <small class="form-text text-muted">Để trống nếu không muốn thay đổi ảnh đại diện.</small>
+                        {% endif %}
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Cập nhật</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1" role="dialog" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="changePasswordModalLabel">Đổi mật khẩu</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form method="post" action="{% url 'accounts:change_password' %}">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="old_password">Mật khẩu cũ</label>
+                        <input type="password" class="form-control" id="old_password" name="old_password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="new_password1">Mật khẩu mới</label>
+                        <input type="password" class="form-control" id="new_password1" name="new_password1" required>
+                        <small class="form-text text-muted">Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ và số.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="new_password2">Xác nhận mật khẩu mới</label>
+                        <input type="password" class="form-control" id="new_password2" name="new_password2" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Đổi mật khẩu</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,467 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Chat AI Sức khỏe - HealthyCare{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chat-container {
+        height: 75vh;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .chat-history {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding: 1rem;
+        background-color: #f8f9fa;
+        border-radius: 0.25rem;
+    }
+    
+    .chat-message {
+        margin-bottom: 1rem;
+        max-width: 80%;
+    }
+    
+    .user-message {
+        margin-left: auto;
+        background-color: #007bff;
+        color: white;
+        border-radius: 1rem 1rem 0 1rem;
+    }
+    
+    .bot-message {
+        margin-right: auto;
+        background-color: #e9ecef;
+        color: #212529;
+        border-radius: 1rem 1rem 1rem 0;
+    }
+    
+    .system-message {
+        width: 100%;
+        text-align: center;
+        margin: 0.5rem 0;
+        color: #6c757d;
+        font-size: 0.875rem;
+    }
+    
+    .message-content {
+        padding: 0.75rem 1rem;
+    }
+    
+    .chat-input {
+        margin-top: 1rem;
+    }
+    
+    .sessions-sidebar {
+        height: 75vh;
+        overflow-y: auto;
+        border-right: 1px solid #dee2e6;
+    }
+    
+    .session-item {
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    
+    .session-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .session-item.active {
+        background-color: #e9ecef;
+        border-left: 3px solid #007bff;
+    }
+    
+    .typing-indicator {
+        display: none;
+        align-items: center;
+        margin: 0.5rem 0;
+    }
+    
+    .typing-indicator span {
+        height: 8px;
+        width: 8px;
+        margin: 0 1px;
+        background-color: #6c757d;
+        display: block;
+        border-radius: 50%;
+        opacity: 0.4;
+    }
+    
+    .typing-indicator span:nth-of-type(1) {
+        animation: typing 1s infinite;
+    }
+    
+    .typing-indicator span:nth-of-type(2) {
+        animation: typing 1s 0.33s infinite;
+    }
+    
+    .typing-indicator span:nth-of-type(3) {
+        animation: typing 1s 0.66s infinite;
+    }
+    
+    @keyframes typing {
+        0% {
+            opacity: 0.4;
+            transform: translateY(0);
+        }
+        50% {
+            opacity: 1;
+            transform: translateY(-5px);
+        }
+        100% {
+            opacity: 0.4;
+            transform: translateY(0);
+        }
+    }
+    
+    .suggestion-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+    
+    .suggestion-chip {
+        background-color: #e9ecef;
+        border-radius: 1rem;
+        padding: 0.4rem 0.8rem;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    
+    .suggestion-chip:hover {
+        background-color: #dee2e6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Sessions Sidebar -->
+        <div class="col-lg-3 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-comments mr-2"></i>Chat Sức khỏe</h5>
+                        <button class="btn btn-sm btn-light" id="newChatBtn">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="sessions-sidebar p-0">
+                    <div class="list-group list-group-flush" id="sessions-list">
+                        {% for session in recent_sessions %}
+                        <a href="{% url 'chatbot:session' session_id=session.session_id %}" 
+                           class="list-group-item list-group-item-action session-item {% if session.session_id == current_session.session_id %}active{% endif %}">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1 text-truncate">{{ session.title|truncatechars:20 }}</h6>
+                                <small>{{ session.updated_at|date:"d/m/Y" }}</small>
+                            </div>
+                            <p class="mb-1 text-muted small text-truncate">
+                                {% with last_msg=session.messages.last %}
+                                    {% if last_msg %}
+                                        {{ last_msg.content|truncatechars:30 }}
+                                    {% else %}
+                                        Trò chuyện mới
+                                    {% endif %}
+                                {% endwith %}
+                            </p>
+                        </a>
+                        {% empty %}
+                        <div class="list-group-item text-center text-muted">
+                            <p class="mb-0">Không có lịch sử trò chuyện</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Chat Main Area -->
+        <div class="col-lg-9">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-robot mr-2"></i>
+                            <span id="chat-title">{{ current_session.title }}</span>
+                        </h5>
+                        <div>
+                            <button class="btn btn-sm btn-light" id="editTitleBtn" title="Đổi tên">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-light ml-1" id="clearChatBtn" title="Xóa trò chuyện">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="chat-container">
+                        <div class="chat-history" id="chatHistory">
+                            <div class="system-message">
+                                <p>Chào mừng bạn đến với HealthyCare AI Assistant</p>
+                                <p>Hãy đặt câu hỏi về sức khỏe hoặc triệu chứng của bạn.</p>
+                            </div>
+                            
+                            {% for message in messages %}
+                                {% if message.message_type == 'user' %}
+                                    <div class="chat-message user-message">
+                                        <div class="message-content">{{ message.content }}</div>
+                                    </div>
+                                {% elif message.message_type == 'bot' %}
+                                    <div class="chat-message bot-message">
+                                        <div class="message-content">{{ message.content|linebreaks }}</div>
+                                    </div>
+                                {% elif message.message_type == 'system' %}
+                                    <div class="system-message">
+                                        {{ message.content }}
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            <!-- Typing indicator -->
+                            <div class="typing-indicator" id="typingIndicator">
+                                <div class="chat-message bot-message">
+                                    <div class="message-content d-flex align-items-center">
+                                        <span></span>
+                                        <span></span>
+                                        <span></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="suggestion-chips" id="suggestionChips">
+                            <div class="suggestion-chip">Tôi bị đau đầu</div>
+                            <div class="suggestion-chip">Các triệu chứng Covid-19</div>
+                            <div class="suggestion-chip">Cách giảm mỡ bụng</div>
+                            <div class="suggestion-chip">Chế độ ăn cho người tiểu đường</div>
+                            <div class="suggestion-chip">Khó ngủ phải làm sao?</div>
+                        </div>
+                        
+                        <div class="chat-input p-3">
+                            <form id="chatForm" class="input-group">
+                                <input type="text" id="messageInput" class="form-control" placeholder="Nhập câu hỏi của bạn..." required>
+                                <div class="input-group-append">
+                                    <button class="btn btn-primary" type="submit">
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Title Modal -->
+<div class="modal fade" id="editTitleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Đổi tên cuộc trò chuyện</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="sessionTitle">Tên mới:</label>
+                    <input type="text" class="form-control" id="sessionTitle" value="{{ current_session.title }}">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" id="saveTitleBtn">Lưu</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Clear Chat Modal -->
+<div class="modal fade" id="clearChatModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Xác nhận xóa trò chuyện</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Bạn có chắc chắn muốn xóa cuộc trò chuyện này? Hành động này không thể hoàn tác.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger" id="confirmClearBtn">Xóa</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/healthycare.js' %}"></script> {# Ensure healthycare.js is loaded #}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const sessionId = '{{ session_id|escapejs }}'; // Use session_id from context
+        const csrfToken = '{{ csrf_token|escapejs }}';
+        
+        // Ensure HealthyCare and ChatBot are loaded
+        if (window.HealthyCare && window.HealthyCare.ChatBot) {
+            const chatBot = new window.HealthyCare.ChatBot(sessionId, csrfToken);
+
+            const chatForm = document.getElementById('chatForm');
+            const messageInput = document.getElementById('messageInput'); // Already defined in ChatBot class, but can be used here too
+            const suggestionChips = document.querySelectorAll('.suggestion-chip');
+
+            if (chatForm) {
+                chatForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    chatBot.sendMessage(); // Use ChatBot's sendMessage
+                });
+            }
+
+            // Suggestion chips functionality (remains largely the same, but uses chatBot.sendMessage indirectly)
+            suggestionChips.forEach(chip => {
+                chip.addEventListener('click', function() {
+                    if (messageInput) {
+                        messageInput.value = this.textContent;
+                    }
+                    if (chatForm) {
+                        // Trigger form submission which in turn calls chatBot.sendMessage()
+                        chatForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                    }
+                });
+            });
+
+        } else {
+            console.error("HealthyCare.ChatBot is not loaded!");
+            // Fallback or error message for the user
+            const chatHistory = document.getElementById('chatHistory');
+            if(chatHistory) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'system-message text-danger';
+                errorDiv.textContent = 'Lỗi tải Chatbot. Vui lòng thử làm mới trang.';
+                chatHistory.appendChild(errorDiv);
+            }
+        }
+
+        // Edit title functionality
+        const editTitleBtn = document.getElementById('editTitleBtn');
+        const saveTitleBtn = document.getElementById('saveTitleBtn');
+        if (editTitleBtn && saveTitleBtn) {
+            editTitleBtn.addEventListener('click', function() {
+                const currentTitle = document.getElementById('chat-title').textContent;
+                document.getElementById('sessionTitle').value = currentTitle; // Populate modal input
+                $('#editTitleModal').modal('show');
+            });
+
+            saveTitleBtn.addEventListener('click', function() {
+                const newTitleInput = document.getElementById('sessionTitle');
+                if (!newTitleInput) return;
+                const newTitle = newTitleInput.value.trim();
+                
+                if (newTitle && sessionId) {
+                    fetch(`/chatbot/session/${sessionId}/title/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify({ title: newTitle })
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            // Try to parse error from backend if possible
+                            return response.json().then(errData => {
+                                throw new Error(errData.error || `HTTP error! status: ${response.status}`);
+                            }).catch(() => {
+                                throw new Error(`HTTP error! status: ${response.status}`);
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            const chatTitleElement = document.getElementById('chat-title');
+                            if (chatTitleElement) {
+                                chatTitleElement.textContent = newTitle;
+                            }
+                            
+                            // Update title in the sidebar as well
+                            // This assumes the current session item in the sidebar has the 'active' class
+                            const activeSessionTitleInSidebar = document.querySelector('#sessions-list .session-item.active h6');
+                            if (activeSessionTitleInSidebar) {
+                                activeSessionTitleInSidebar.textContent = newTitle.length > 20 ? newTitle.substring(0, 17) + '...' : newTitle;
+                            }
+                            
+                            newTitleInput.value = newTitle; // Update modal input for consistency
+                            $('#editTitleModal').modal('hide');
+                        } else {
+                            alert(data.error || 'Không thể cập nhật tiêu đề. Vui lòng thử lại.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error updating session title:', error);
+                        alert(`Đã xảy ra lỗi khi cập nhật tiêu đề: ${error.message}`);
+                    });
+                } else if (!newTitle) {
+                    alert('Tiêu đề không được để trống.');
+                }
+            });
+        }
+
+        // Clear chat functionality
+        const clearChatBtn = document.getElementById('clearChatBtn');
+        const confirmClearBtn = document.getElementById('confirmClearBtn');
+        if (clearChatBtn && confirmClearBtn) {
+            clearChatBtn.addEventListener('click', function() {
+                $('#clearChatModal').modal('show');
+            });
+
+            confirmClearBtn.addEventListener('click', function() {
+                if (sessionId) {
+                    fetch(`/chatbot/session/${sessionId}/clear/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Clear chat history in the UI
+                            const chatHistory = document.getElementById('chatHistory');
+                            if (chatHistory) {
+                                chatHistory.innerHTML = ''; // Clear messages
+                                
+                                // Optionally, show a system message indicating chat is cleared
+                                const systemMessage = document.createElement('div');
+                                systemMessage.className = 'system-message';
+                                systemMessage.textContent = 'Cuộc trò chuyện đã được xóa.';
+                                chatHistory.appendChild(systemMessage);
+                            }
+                            $('#clearChatModal').modal('hide');
+                        } else {
+                            console.error("Failed to clear chat:", data.error);
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error clearing chat:", error);
+                    });
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

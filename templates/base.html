@@ -1,0 +1,150 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}HealthyCareSystem - Hệ thống chăm sóc sức khỏe{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand font-weight-bold" href="{% url 'home' %}">
+                <i class="fas fa-heartbeat mr-2"></i>HealthyCare
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home' %}"><i class="fas fa-home mr-1"></i> Trang chủ</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'doctors:list' %}"><i class="fas fa-user-md mr-1"></i> Bác sĩ</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'chatbot:home' %}"><i class="fas fa-robot mr-1"></i> Chat AI</a>
+                    </li>
+                    
+                    {% if user.is_authenticated %}
+                        {% if user.user_type == 'patient' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'appointments:book' %}"><i class="fas fa-calendar-plus mr-1"></i> Đặt lịch</a>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown">
+                                <i class="fas fa-user-circle mr-1"></i> {{ user.get_full_name|default:user.username }}
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-right">
+                                <a class="dropdown-item" href="{% url 'patients:profile' %}"><i class="fas fa-id-card mr-2"></i> Hồ sơ</a>
+                                <a class="dropdown-item" href="{% url 'appointments:list' %}"><i class="fas fa-calendar-check mr-2"></i> Lịch hẹn</a>
+                                <a class="dropdown-item" href="{% url 'patients:medical_history' %}"><i class="fas fa-file-medical mr-2"></i> Bệnh án</a>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item text-danger" href="{% url 'accounts:logout' %}"><i class="fas fa-sign-out-alt mr-2"></i> Đăng xuất</a>
+                            </div>
+                        </li>
+                        {% elif user.user_type == 'doctor' %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown">
+                                <i class="fas fa-user-md mr-1"></i> BS. {{ user.get_full_name|default:user.username }}
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-right">
+                                <a class="dropdown-item" href="{% url 'doctors:profile' %}"><i class="fas fa-id-card mr-2"></i> Hồ sơ</a>
+                                <a class="dropdown-item" href="{% url 'appointments:list' %}"><i class="fas fa-calendar-check mr-2"></i> Lịch hẹn</a>
+                                <a class="dropdown-item" href="{% url 'doctors:schedule' %}"><i class="fas fa-clock mr-2"></i> Lịch làm việc</a>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item text-danger" href="{% url 'accounts:logout' %}"><i class="fas fa-sign-out-alt mr-2"></i> Đăng xuất</a>
+                            </div>
+                        </li>
+                        {% elif user.is_staff %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'admin:index' %}"><i class="fas fa-cogs mr-1"></i> Quản trị</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'accounts:logout' %}"><i class="fas fa-sign-out-alt mr-1"></i> Đăng xuất</a>
+                        </li>
+                        {% endif %}
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'accounts:login' %}"><i class="fas fa-sign-in-alt mr-1"></i> Đăng nhập</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link btn btn-outline-light btn-sm mt-1" href="{% url 'accounts:register' %}"><i class="fas fa-user-plus mr-1"></i> Đăng ký</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container my-4">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-light py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4">
+                    <h5><i class="fas fa-heartbeat mr-2"></i>HealthyCareSystem</h5>
+                    <p>Hệ thống chăm sóc sức khỏe thông minh kết hợp AI, giúp bạn theo dõi và nâng cao sức khỏe một cách toàn diện.</p>
+                </div>
+                <div class="col-md-4">
+                    <h5>Liên kết</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="{% url 'home' %}" class="text-light"><i class="fas fa-angle-right mr-2"></i>Trang chủ</a></li>
+                        <li><a href="{% url 'doctors:list' %}" class="text-light"><i class="fas fa-angle-right mr-2"></i>Bác sĩ</a></li>
+                        <li><a href="{% url 'chatbot:home' %}" class="text-light"><i class="fas fa-angle-right mr-2"></i>Chat AI</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h5>Liên hệ</h5>
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-map-marker-alt mr-2"></i>123 Đường Sức Khỏe, TP. Hồ Chí Minh</li>
+                        <li><i class="fas fa-phone mr-2"></i>+84 123 456 789</li>
+                        <li><i class="fas fa-envelope mr-2"></i>info@healthycare.vn</li>
+                    </ul>
+                </div>
+            </div>
+            <hr class="bg-light">
+            <div class="text-center">
+                <p>&copy; {% now "Y" %} HealthyCareSystem. Tất cả các quyền được bảo lưu.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JS -->
+    <script src="{% static 'js/script.js' %}"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

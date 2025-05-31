@@ -1,0 +1,256 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Lịch làm việc - HealthyCare{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.2/main.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4 class="mb-0"><i class="fas fa-calendar-alt mr-2"></i>Lịch làm việc</h4>
+                <button class="btn btn-light btn-sm" data-toggle="modal" data-target="#addScheduleModal">
+                    <i class="fas fa-plus mr-1"></i>Thêm lịch mới
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <ul class="nav nav-tabs" id="scheduleTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link active" id="calendar-tab" data-toggle="tab" href="#calendar" role="tab">
+                        <i class="fas fa-calendar mr-1"></i>Lịch tháng
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" id="list-tab" data-toggle="tab" href="#list" role="tab">
+                        <i class="fas fa-list mr-1"></i>Danh sách
+                    </a>
+                </li>
+            </ul>
+            
+            <div class="tab-content mt-3" id="scheduleTabContent">
+                <!-- Calendar Tab -->
+                <div class="tab-pane fade show active" id="calendar" role="tabpanel">
+                    <div id="calendar-container"></div>
+                </div>
+                
+                <!-- List Tab -->
+                <div class="tab-pane fade" id="list" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Thứ</th>
+                                    <th>Thời gian bắt đầu</th>
+                                    <th>Thời gian kết thúc</th>
+                                    <th>Trạng thái</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for schedule in schedules %}
+                                <tr>
+                                    <td>{{ schedule.get_day_of_week_display }}</td>
+                                    <td>{{ schedule.start_time|time:"H:i" }}</td>
+                                    <td>{{ schedule.end_time|time:"H:i" }}</td>
+                                    <td>
+                                        {% if schedule.is_available %}
+                                            <span class="badge badge-success">Hoạt động</span>
+                                        {% else %}
+                                            <span class="badge badge-danger">Không hoạt động</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary edit-schedule" 
+                                                    data-id="{{ schedule.id }}"
+                                                    data-day="{{ schedule.day_of_week }}"
+                                                    data-start="{{ schedule.start_time|time:'H:i' }}"
+                                                    data-end="{{ schedule.end_time|time:'H:i' }}"
+                                                    data-available="{{ schedule.is_available|yesno:'1,0' }}">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger delete-schedule" data-id="{{ schedule.id }}">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-3">Không có lịch làm việc nào.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Schedule Modal -->
+<div class="modal fade" id="addScheduleModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-calendar-plus mr-2"></i>Thêm lịch làm việc</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="addScheduleForm" method="post" action="{% url 'doctors:add_schedule' %}">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="day_of_week">Ngày trong tuần:</label>
+                        <select id="day_of_week" name="day_of_week" class="form-control" required>
+                            <option value="0">Thứ 2</option>
+                            <option value="1">Thứ 3</option>
+                            <option value="2">Thứ 4</option>
+                            <option value="3">Thứ 5</option>
+                            <option value="4">Thứ 6</option>
+                            <option value="5">Thứ 7</option>
+                            <option value="6">Chủ nhật</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="start_time">Thời gian bắt đầu:</label>
+                        <input type="time" id="start_time" name="start_time" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="end_time">Thời gian kết thúc:</label>
+                        <input type="time" id="end_time" name="end_time" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <div class="custom-control custom-switch">
+                            <input type="checkbox" class="custom-control-input" id="is_available" name="is_available" checked>
+                            <label class="custom-control-label" for="is_available">Hoạt động</label>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save mr-1"></i>Lưu lịch
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Schedule Modal -->
+<div class="modal fade" id="editScheduleModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-edit mr-2"></i>Chỉnh sửa lịch làm việc</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="editScheduleForm" method="post" action="{% url 'doctors:edit_schedule' %}">
+                    {% csrf_token %}
+                    <input type="hidden" id="edit_schedule_id" name="schedule_id">
+                    <div class="form-group">
+                        <label for="edit_day_of_week">Ngày trong tuần:</label>
+                        <select id="edit_day_of_week" name="day_of_week" class="form-control" required>
+                            <option value="0">Thứ 2</option>
+                            <option value="1">Thứ 3</option>
+                            <option value="2">Thứ 4</option>
+                            <option value="3">Thứ 5</option>
+                            <option value="4">Thứ 6</option>
+                            <option value="5">Thứ 7</option>
+                            <option value="6">Chủ nhật</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_start_time">Thời gian bắt đầu:</label>
+                        <input type="time" id="edit_start_time" name="start_time" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_end_time">Thời gian kết thúc:</label>
+                        <input type="time" id="edit_end_time" name="end_time" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <div class="custom-control custom-switch">
+                            <input type="checkbox" class="custom-control-input" id="edit_is_available" name="is_available">
+                            <label class="custom-control-label" for="edit_is_available">Hoạt động</label>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save mr-1"></i>Cập nhật
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.2/main.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.2/locales-all.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Khởi tạo FullCalendar
+        const calendarEl = document.getElementById('calendar-container');
+        const calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'timeGridWeek',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,listWeek'
+            },
+            slotMinTime: '07:00:00',
+            slotMaxTime: '20:00:00',
+            locale: 'vi',
+            slotDuration: '00:30:00',
+            allDaySlot: false,
+            nowIndicator: true,
+            businessHours: [
+                {% for schedule in schedules %}
+                {
+                    daysOfWeek: [{{ schedule.day_of_week }}], 
+                    startTime: '{{ schedule.start_time|time:"H:i" }}', 
+                    endTime: '{{ schedule.end_time|time:"H:i" }}',
+                },
+                {% endfor %}
+            ],
+            events: [
+                // Sẽ lấy từ API sau
+            ]
+        });
+        calendar.render();
+        
+        // Xử lý sửa lịch làm việc
+        $('.edit-schedule').click(function() {
+            const id = $(this).data('id');
+            const day = $(this).data('day');
+            const start = $(this).data('start');
+            const end = $(this).data('end');
+            const available = $(this).data('available');
+            
+            $('#edit_schedule_id').val(id);
+            $('#edit_day_of_week').val(day);
+            $('#edit_start_time').val(start);
+            $('#edit_end_time').val(end);
+            $('#edit_is_available').prop('checked', available == 1);
+            
+            $('#editScheduleModal').modal('show');
+        });
+        
+        // Xử lý xóa lịch làm việc
+        $('.delete-schedule').click(function() {
+            const id = $(this).data('id');
+            if (confirm('Bạn có chắc chắn muốn xóa lịch làm việc này?')) {
+                window.location.href = "{% url 'doctors:delete_schedule' %}?schedule_id=" + id;
+            }
+        });
+    });
+</script>
+{% endblock %}

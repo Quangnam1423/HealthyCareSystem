@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Hồ sơ bác sĩ - HealthyCare{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-user-md mr-2"></i>Thông tin cá nhân</h5>
+                </div>
+                <div class="card-body text-center">
+                    {% if user.avatar %}
+                        <img src="{{ user.avatar.url }}" alt="Avatar" class="img-fluid rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover;">
+                    {% else %}
+                        <img src="{% static 'images/doctor-default.jpg' %}" alt="Avatar mặc định" class="img-fluid rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover;">
+                    {% endif %}
+                    <h4>BS. {{ user.get_full_name }}</h4>
+                    <p class="text-muted">{{ doctor.doctor_id }}</p>
+                    
+                    <div class="my-3">
+                        {% for spec in doctor.specializations.all %}
+                            <span class="badge badge-info mr-1 mb-1">{{ spec.name }}</span>
+                        {% endfor %}
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="text-left">
+                        <p><i class="fas fa-envelope mr-2 text-primary"></i> {{ user.email }}</p>
+                        <p><i class="fas fa-phone mr-2 text-primary"></i> {{ user.phone|default:"Chưa cập nhật" }}</p>
+                        <p><i class="fas fa-calendar-alt mr-2 text-primary"></i> {{ user.date_of_birth|date:"d/m/Y"|default:"Chưa cập nhật" }}</p>
+                        <p><i class="fas fa-map-marker-alt mr-2 text-primary"></i> {{ user.address|default:"Chưa cập nhật" }}</p>
+                    </div>
+                    
+                    <a href="{% url 'doctors:edit_profile' %}" class="btn btn-outline-primary btn-block">
+                        <i class="fas fa-edit mr-2"></i>Chỉnh sửa thông tin
+                    </a>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-award mr-2"></i>Thông tin chuyên môn</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6 class="text-muted">Kinh nghiệm:</h6>
+                        <p><strong>{{ doctor.years_of_experience }} năm</strong></p>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="text-muted">Trình độ học vấn:</h6>
+                        <p><strong>{{ doctor.education }}</strong></p>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="text-muted">Số giấy phép:</h6>
+                        <p><strong>{{ doctor.license_number }}</strong></p>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="text-muted">Đánh giá:</h6>
+                        <div>
+                            <span class="h4">{{ doctor.rating }}</span>/5
+                            <span class="text-muted ml-2">({{ doctor.total_reviews }} đánh giá)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Lịch hẹn hôm nay -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-calendar-day mr-2"></i>Lịch hẹn hôm nay</h5>
+                </div>
+                <div class="card-body">
+                    {% if today_appointments %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Thời gian</th>
+                                        <th>Bệnh nhân</th>
+                                        <th>Loại khám</th>
+                                        <th>Trạng thái</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for appointment in today_appointments %}
+                                    <tr>
+                                        <td>{{ appointment.appointment_time }}</td>
+                                        <td>{{ appointment.patient.user.get_full_name }}</td>
+                                        <td>{{ appointment.get_appointment_type_display }}</td>
+                                        <td>
+                                            {% if appointment.status == 'pending' %}
+                                                <span class="badge badge-warning">{{ appointment.get_status_display }}</span>
+                                            {% elif appointment.status == 'confirmed' %}
+                                                <span class="badge badge-info">{{ appointment.get_status_display }}</span>
+                                            {% elif appointment.status == 'in_progress' %}
+                                                <span class="badge badge-primary">{{ appointment.get_status_display }}</span>
+                                            {% elif appointment.status == 'completed' %}
+                                                <span class="badge badge-success">{{ appointment.get_status_display }}</span>
+                                            {% elif appointment.status == 'cancelled' %}
+                                                <span class="badge badge-danger">{{ appointment.get_status_display }}</span>
+                                            {% else %}
+                                                <span class="badge badge-secondary">{{ appointment.get_status_display }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group">
+                                                <a href="{% url 'appointments:detail' appointment.id %}" class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                {% if appointment.status == 'confirmed' %}
+                                                <a href="{% url 'appointments:start' appointment.id %}" class="btn btn-sm btn-success">
+                                                    <i class="fas fa-play"></i>
+                                                </a>
+                                                {% elif appointment.status == 'in_progress' %}
+                                                <a href="{% url 'appointments:complete' appointment.id %}" class="btn btn-sm btn-info">
+                                                    <i class="fas fa-check"></i>
+                                                </a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-calendar-times fa-4x text-muted mb-3"></i>
+                            <p>Không có lịch hẹn nào hôm nay.</p>
+                        </div>
+                    {% endif %}
+                    
+                    <a href="{% url 'appointments:list' %}" class="btn btn-outline-info btn-sm mt-2">
+                        <i class="fas fa-list mr-1"></i>Xem tất cả lịch hẹn
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Thống kê -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar mr-2"></i>Thống kê</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-4">
+                            <div class="card border-success h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-user-check fa-2x text-success mb-2"></i>
+                                    <h5 class="card-title">Ca khám hoàn thành</h5>
+                                    <p class="h2">{{ completed_count|default:"0" }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3 mb-4">
+                            <div class="card border-info h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-calendar-alt fa-2x text-info mb-2"></i>
+                                    <h5 class="card-title">Lịch hẹn sắp tới</h5>
+                                    <p class="h2">{{ upcoming_count|default:"0" }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3 mb-4">
+                            <div class="card border-warning h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-star fa-2x text-warning mb-2"></i>
+                                    <h5 class="card-title">Đánh giá</h5>
+                                    <p class="h2">{{ doctor.rating }}/5</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3 mb-4">
+                            <div class="card border-danger h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-users fa-2x text-danger mb-2"></i>
+                                    <h5 class="card-title">Bệnh nhân</h5>
+                                    <p class="h2">{{ total_patients|default:"0" }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

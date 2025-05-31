@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Lịch sử khám bệnh - HealthyCare{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="card shadow">
+        <div class="card-header bg-info text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4 class="mb-0"><i class="fas fa-file-medical-alt mr-2"></i>Lịch sử khám bệnh</h4>
+                <a href="{% url 'patients:profile' %}" class="btn btn-sm btn-light">
+                    <i class="fas fa-arrow-left mr-1"></i>Quay lại
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if appointments %}
+                <div class="table-responsive">
+                    <table class="table table-hover" id="appointmentTable">
+                        <thead>
+                            <tr>
+                                <th>Ngày khám</th>
+                                <th>Bác sĩ</th>
+                                <th>Chuyên khoa</th>
+                                <th>Chẩn đoán</th>
+                                <th>Xem chi tiết</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for appointment in appointments %}
+                            <tr>
+                                <td>{{ appointment.appointment_date|date:"d/m/Y" }}</td>
+                                <td>BS. {{ appointment.doctor.user.get_full_name }}</td>
+                                <td>
+                                    {% for specialization in appointment.doctor.specializations.all %}
+                                        {{ specialization.name }}{% if not forloop.last %}, {% endif %}
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    {% if appointment.diagnosis %}
+                                        {{ appointment.diagnosis|truncatechars:60 }}
+                                    {% else %}
+                                        <span class="text-muted">Không có chẩn đoán</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'appointments:detail' appointment.id %}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-eye mr-1"></i>Chi tiết
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-4">
+                    <h5>Tải xuống báo cáo</h5>
+                    <div class="btn-group">
+                        <button id="exportPDF" class="btn btn-sm btn-danger">
+                            <i class="fas fa-file-pdf mr-1"></i>PDF
+                        </button>
+                        <button id="exportExcel" class="btn btn-sm btn-success">
+                            <i class="fas fa-file-excel mr-1"></i>Excel
+                        </button>
+                        <button id="printRecord" class="btn btn-sm btn-info">
+                            <i class="fas fa-print mr-1"></i>In
+                        </button>
+                    </div>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-file-medical-alt fa-5x text-muted mb-4"></i>
+                    <h4 class="text-muted">Không có lịch sử khám bệnh</h4>
+                    <p>Bạn chưa có lịch sử khám bệnh nào. Hãy đặt lịch khám để bắt đầu.</p>
+                    <a href="{% url 'appointments:book' %}" class="btn btn-primary mt-3">
+                        <i class="fas fa-calendar-plus mr-1"></i>Đặt lịch khám
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if appointments %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tableexport.jquery.plugin@1.10.21/tableExport.min.js"></script>
+<script>
+    // In bệnh án
+    document.getElementById('printRecord').addEventListener('click', function() {
+        window.print();
+    });
+    
+    // Export PDF
+    document.getElementById('exportPDF').addEventListener('click', function() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        // Add title
+        doc.setFontSize(18);
+        doc.text("Lịch sử khám bệnh - HealthyCare", 14, 22);
+        
+        // Add patient info
+        doc.setFontSize(12);
+        doc.text("Bệnh nhân: {{ user.get_full_name }}", 14, 30);
+        doc.text("Mã bệnh nhân: {{ user.patient.patient_id }}", 14, 36);
+        doc.text("Ngày xuất báo cáo: " + new Date().toLocaleDateString('vi-VN'), 14, 42);
+        
+        // Convert table to PDF
+        doc.autoTable({ 
+            html: '#appointmentTable',
+            startY: 50,
+            headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+            alternateRowStyles: { fillColor: [240, 240, 240] },
+            margin: { top: 50 }
+        });
+        
+        // Save PDF
+        doc.save('lich-su-kham-benh-{{ user.last_name }}.pdf');
+    });
+    
+    // Export Excel
+    document.getElementById('exportExcel').addEventListener('click', function() {
+        $('#appointmentTable').tableExport({
+            headers: true,
+            footers: true,
+            formats: ['xlsx'],
+            filename: 'lich-su-kham-benh',
+            bootstrap: true,
+            exportButtons: false,
+            position: 'bottom',
+            ignoreRows: null,
+            ignoreCols: null,
+            trimWhitespace: true,
+            RTL: false,
+            sheetname: 'Lich su kham benh'
+        });
+    });
+</script>
+{% endif %}
+{% endblock %}

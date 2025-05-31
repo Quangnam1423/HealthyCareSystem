@@ -1,0 +1,108 @@
+
+Hệ thống Chăm sóc Sức khỏe (HealthyCareSystem) - Phân rã Kiến trúc Microservices
+
+1. Giới thiệu
+
+Để đảm bảo khả năng mở rộng, bảo trì và triển khai linh hoạt cho Hệ thống Chăm sóc Sức khỏe (HealthyCareSystem), chúng tôi đề xuất một kiến trúc dựa trên microservices. Mỗi microservice sẽ chịu trách nhiệm cho một miền nghiệp vụ (domain) cụ thể, hoạt động độc lập và giao tiếp với nhau thông qua các API được chuẩn hóa.
+
+2. Lý do chọn Microservices
+
+- Tách biệt chức năng: Mỗi dịch vụ tập trung vào một nhóm chức năng nghiệp vụ cốt lõi (ví dụ: Quản lý Người dùng, Quản lý Lịch hẹn, Tư vấn Chatbot).
+- Triển khai độc lập: Các dịch vụ có thể được phát triển, triển khai, cập nhật và mở rộng một cách độc lập mà không gây ảnh hưởng lớn đến các phần khác của hệ thống.
+- Khả năng mở rộng linh hoạt: Cho phép mở rộng quy mô của từng dịch vụ cụ thể khi có nhu cầu tăng tải, thay vì phải mở rộng toàn bộ hệ thống.
+- Lựa chọn công nghệ đa dạng (Tiềm năng): Mặc dù dự án hiện tại sử dụng Django, kiến trúc microservices cho phép mỗi dịch vụ (trong tương lai) có thể được xây dựng bằng công nghệ phù hợp nhất với yêu cầu của nó.
+- Tăng cường khả năng phục hồi: Lỗi ở một dịch vụ ít có khả năng làm sập toàn bộ hệ thống.
+
+3. Các Domain Chính và Microservices Tương ứng
+
+Dựa trên các chức năng hiện tại và tiềm năng của HealthyCareSystem, chúng tôi xác định các domain chính và các microservices tương ứng như sau:
+
+3.1. User Service (Dịch vụ Người dùng)
+
+*   **Domain:** Quản lý tài khoản và thông tin cơ bản của tất cả người dùng (Bệnh nhân, Bác sĩ, Quản trị viên).
+*   **Chức năng chính:**
+  - Đăng ký tài khoản mới cho bệnh nhân và bác sĩ.
+  - Xác thực người dùng (đăng nhập, đăng xuất).
+  - Quản lý thông tin hồ sơ cơ bản (tên, email, số điện thoại, ảnh đại diện).
+  - Thay đổi mật khẩu.
+  - Quản lý phân quyền cơ bản.
+  - Admin: Quản lý toàn bộ tài khoản người dùng (tạo, sửa, xóa, kích hoạt/vô hiệu hóa).
+- Database đề xuất: UserDB (Ví dụ: MySQL - phù hợp cho dữ liệu quan hệ của người dùng).
+
+3.2. Doctor Service (Dịch vụ Bác sĩ)
+
+*   **Domain:** Quản lý thông tin chi tiết và chuyên môn của bác sĩ.
+*   **Chức năng chính:**
+  - Quản lý hồ sơ chi tiết của bác sĩ (chuyên khoa, kinh nghiệm, bằng cấp, phòng khám).
+  - Quản lý danh sách chuyên khoa.
+  - Bác sĩ: Cập nhật thông tin chuyên môn, lịch làm việc cơ bản (khung giờ sẵn có - TimeSlot).
+  - Bệnh nhân/Hệ thống: Tìm kiếm bác sĩ theo tên, chuyên khoa.
+  - Admin: Quản lý danh sách bác sĩ và chuyên khoa.
+- Database đề xuất: DoctorDB (Ví dụ: PostgreSQL - tốt cho dữ liệu có cấu trúc và các truy vấn phức tạp liên quan đến lịch trình, chuyên khoa).
+
+3.3. Patient Service (Dịch vụ Bệnh nhân)
+
+*   **Domain:** Quản lý thông tin và lịch sử y tế của bệnh nhân.
+*   **Chức năng chính:**
+  - Quản lý hồ sơ chi tiết của bệnh nhân (ngoài thông tin cơ bản từ User Service).
+  - Xem lịch sử các cuộc hẹn đã diễn ra.
+  - Xem thông tin tóm tắt về các lần khám (nếu bác sĩ cập nhật).
+  - Bệnh nhân: Cập nhật thông tin cá nhân mở rộng.
+- Database đề xuất: PatientDB (Ví dụ: MySQL hoặc PostgreSQL - lưu trữ thông tin bệnh nhân và liên kết đến các dịch vụ khác).
+
+3.4. Appointment Service (Dịch vụ Lịch hẹn)
+
+*   **Domain:** Quản lý toàn bộ quy trình đặt và theo dõi lịch hẹn khám bệnh.
+*   **Chức năng chính:**
+  - Bệnh nhân: Đặt lịch hẹn với bác sĩ dựa trên khung giờ trống.
+  - Bệnh nhân: Xem danh sách lịch hẹn (sắp tới, đã hoàn thành, đã hủy).
+  - Bệnh nhân: Hủy lịch hẹn.
+  - Bác sĩ: Xem danh sách lịch hẹn được đặt với mình.
+  - Bác sĩ: Xác nhận, hoàn thành, hoặc hủy lịch hẹn.
+  - Bác sĩ/Admin: Quản lý các khung giờ khám bệnh (TimeSlot).
+  - Bệnh nhân: Đánh giá lịch hẹn/bác sĩ sau khi hoàn thành.
+  - Admin: Theo dõi và quản lý tổng thể các lịch hẹn.
+- Database đề xuất: AppointmentDB (Ví dụ: PostgreSQL - xử lý tốt các giao dịch, ràng buộc và truy vấn liên quan đến lịch trình, trạng thái).
+
+3.5. Chatbot Service (Dịch vụ Tư vấn Chatbot)
+
+*   **Domain:** Cung cấp tư vấn sức khỏe sơ bộ và quản lý tương tác qua chatbot.
+*   **Chức năng chính:**
+  - Người dùng: Tương tác với chatbot để hỏi về triệu chứng sức khỏe.
+  - Hệ thống: Xử lý ngôn ngữ tự nhiên (NLP) để hiểu câu hỏi.
+  - Hệ thống: Truy vấn cơ sở tri thức về triệu chứng để đưa ra thông tin/lời khuyên.
+  - Lưu trữ lịch sử các phiên chat và tin nhắn.
+  - Admin: Quản lý cơ sở dữ liệu triệu chứng và câu trả lời mẫu.
+  - (Tiềm năng) Tích hợp AI để phân tích cảm xúc hoặc học hỏi từ tương tác.
+- Database đề xuất: ChatbotDB (Ví dụ: MongoDB - linh hoạt cho việc lưu trữ các đoạn hội thoại, dữ liệu triệu chứng có cấu trúc đa dạng).
+
+3.6. Notification Service (Dịch vụ Thông báo - Tiềm năng)
+
+*   **Domain:** Gửi các thông báo đến người dùng qua các kênh khác nhau.
+*   **Chức năng chính:**
+  - Gửi email/SMS xác nhận đặt lịch hẹn.
+  - Gửi email/SMS nhắc nhở lịch hẹn.
+  - Thông báo khi lịch hẹn bị hủy hoặc thay đổi.
+  - Thông báo về các cập nhật quan trọng của hệ thống.
+- Database đề xuất: Có thể không cần DB riêng nếu chỉ là stateless, hoặc một DB nhỏ (ví dụ: Redis) để quản lý hàng đợi thông báo.
+
+4. Giao tiếp giữa các Microservices
+
+- Các microservices sẽ giao tiếp với nhau chủ yếu thông qua RESTful APIs (sử dụng JSON).
+- Một API Gateway có thể được xem xét để làm điểm vào duy nhất cho các yêu cầu từ client, giúp đơn giản hóa việc quản lý API, xác thực, và định tuyến.
+- Cơ chế Service Discovery (ví dụ: Consul, Eureka) có thể cần thiết khi số lượng services tăng lên để các dịch vụ có thể tìm thấy nhau một cách động.
+
+5. Cấu trúc Dự án cho mỗi Microservice (với Django)
+
+Mỗi microservice được xây dựng bằng Django sẽ có cấu trúc thư mục tương tự như một ứng dụng Django độc lập:
+
+- models.py: Định nghĩa các schema dữ liệu (bảng) cho domain của service đó sử dụng Django ORM.
+- serializers.py: Sử dụng Django REST Framework để chuyển đổi dữ liệu giữa các đối tượng model và định dạng JSON cho API.
+- views.py (hoặc api_views.py): Chứa logic nghiệp vụ và định nghĩa các API endpoints (sử dụng Django REST Framework ViewSets hoặc APIViews).
+- urls.py: Định tuyến các URL cho các API endpoints của microservice.
+- settings.py: Cấu hình riêng cho microservice, bao gồm cả kết nối đến cơ sở dữ liệu riêng của nó.
+- manage.py: Tập lệnh quản lý Django cho service.
+
+6. Kết luận
+
+Việc áp dụng kiến trúc microservices cho HealthyCareSystem sẽ mang lại nhiều lợi ích về lâu dài, giúp hệ thống trở nên mạnh mẽ, linh hoạt và dễ dàng thích ứng với các yêu cầu thay đổi trong tương lai. Quá trình chuyển đổi hoặc xây dựng mới theo kiến trúc này cần được thực hiện từng bước, ưu tiên các domain nghiệp vụ cốt lõi.
