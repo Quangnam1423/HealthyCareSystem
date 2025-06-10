@@ -343,6 +343,58 @@
                 });
             });
 
+            // New Chat functionality
+            const newChatBtn = document.getElementById('newChatBtn');
+            if (newChatBtn) {
+                newChatBtn.addEventListener('click', function() {
+                    // Generate new UUID for new session
+                    const newSessionId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                        const r = Math.random() * 16 | 0;
+                        const v = c == 'x' ? r : (r & 0x3 | 0x8);
+                        return v.toString(16);
+                    });
+                    // Redirect to new session
+                    window.location.href = `/chatbot/session/${newSessionId}/`;
+                });
+            }
+
+            // Function to update sidebar when new message is sent
+            function updateSidebar(sessionId, lastMessage) {
+                const activeSessionItem = document.querySelector(`#sessions-list .session-item[href*="${sessionId}"]`);
+                if (activeSessionItem) {
+                    const lastMsgElement = activeSessionItem.querySelector('.text-muted.small');
+                    if (lastMsgElement) {
+                        const truncatedMessage = lastMessage.length > 30 ? lastMessage.substring(0, 27) + '...' : lastMessage;
+                        lastMsgElement.textContent = truncatedMessage;
+                    }
+                    
+                    // Update timestamp
+                    const timestampElement = activeSessionItem.querySelector('small');
+                    if (timestampElement) {
+                        const now = new Date();
+                        timestampElement.textContent = now.toLocaleDateString('vi-VN');
+                    }
+                    
+                    // Move session to top of list
+                    const sessionsList = document.getElementById('sessions-list');
+                    if (sessionsList && activeSessionItem.parentNode === sessionsList) {
+                        sessionsList.removeChild(activeSessionItem);
+                        sessionsList.insertBefore(activeSessionItem, sessionsList.firstChild);
+                    }
+                }
+            }
+
+            // Override ChatBot sendMessage to update sidebar
+            const originalSendMessage = chatBot.sendMessage.bind(chatBot);
+            chatBot.sendMessage = async function() {
+                const messageText = this.messageInput.value.trim();
+                await originalSendMessage();
+                // Update sidebar with the user message
+                if (messageText) {
+                    updateSidebar(sessionId, messageText);
+                }
+            };
+
         } else {
             console.error("HealthyCare.ChatBot is not loaded!");
             // Fallback or error message for the user

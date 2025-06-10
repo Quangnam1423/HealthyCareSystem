@@ -16,8 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Chat functionality
-class ChatBot {
-    constructor(sessionId, csrfToken) { // Added csrfToken
+class ChatBot {    constructor(sessionId, csrfToken) { // Added csrfToken
         this.sessionId = sessionId || ''; 
         if (!this.sessionId) {
             console.error("ChatBot initialized without a session ID!");
@@ -25,7 +24,7 @@ class ChatBot {
             // For now, we assume chat_session.html always provides it.
         }
         this.csrfToken = csrfToken; // Store CSRF token
-        this.messagesContainer = document.getElementById('chat-messages'); // Ensure this ID exists if used, or use chatHistory
+        this.messagesContainer = document.getElementById('chatHistory'); // Changed from 'chat-messages' to 'chatHistory'
         this.messageInput = document.getElementById('messageInput'); // Corrected ID
         this.sendButton = document.getElementById('send-button'); // Ensure this ID exists or use the form's submit
         
@@ -67,7 +66,7 @@ class ChatBot {
         this.showTypingIndicator(); // Show typing indicator for bot
 
         try {
-            const response = await fetch('/chatbot/api/message/', {
+            const response = await fetch('/chatbot/api/chatbot/message/', { // <-- UPDATED URL
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

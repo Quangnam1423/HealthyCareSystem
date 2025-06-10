@@ -1,0 +1,219 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Lịch sử Chat - HealthyCare{% endblock %}
+
+{% block extra_css %}
+<style>
+    .session-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        cursor: pointer;
+    }
+    
+    .session-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .session-preview {
+        max-height: 100px;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .session-preview::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 20px;
+        background: linear-gradient(transparent, white);
+    }
+    
+    .message-count {
+        background: #007bff;
+        color: white;
+        border-radius: 15px;
+        padding: 2px 8px;
+        font-size: 0.75rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-history mr-2"></i>Lịch sử Chat</h2>
+                <a href="{% url 'chatbot:home' %}" class="btn btn-primary">
+                    <i class="fas fa-plus mr-2"></i>Chat mới
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    {% if sessions %}
+    <div class="row">
+        {% for session in sessions %}
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card session-card h-100" onclick="window.location.href='{% url 'chatbot:session' session_id=session.session_id %}'">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0 text-truncate">{{ session.title|truncatechars:25 }}</h6>
+                        <span class="message-count">{{ session.messages.count }}</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="session-preview mb-3">
+                        {% for message in session.messages.all|slice:":3" %}
+                            <div class="mb-2">
+                                <small class="text-muted">
+                                    {% if message.message_type == 'user' %}
+                                        <i class="fas fa-user"></i> Bạn:
+                                    {% else %}
+                                        <i class="fas fa-robot"></i> Bot:
+                                    {% endif %}
+                                </small>
+                                <div class="text-truncate">{{ message.content|truncatechars:50 }}</div>
+                            </div>
+                        {% empty %}
+                            <p class="text-muted">Chưa có tin nhắn</p>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            <i class="fas fa-clock mr-1"></i>
+                            {{ session.updated_at|date:"d/m/Y H:i" }}
+                        </small>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-sm btn-outline-primary" 
+                                    onclick="event.stopPropagation(); window.location.href='{% url 'chatbot:session' session_id=session.session_id %}'" 
+                                    title="Tiếp tục chat">
+                                <i class="fas fa-comments"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" 
+                                    onclick="event.stopPropagation(); deleteSession('{{ session.session_id }}')" 
+                                    title="Xóa cuộc trò chuyện">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Pagination if needed -->
+    {% if sessions.has_other_pages %}
+    <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center">
+            {% if sessions.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ sessions.previous_page_number }}">&laquo; Trước</a>
+                </li>
+            {% endif %}
+            
+            {% for num in sessions.paginator.page_range %}
+                {% if sessions.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                {% else %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if sessions.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ sessions.next_page_number }}">Sau &raquo;</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+    
+    {% else %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-comments fa-4x text-muted mb-3"></i>
+                    <h4 class="text-muted">Chưa có lịch sử chat</h4>
+                    <p class="text-muted">Bạn chưa có cuộc trò chuyện nào. Hãy bắt đầu chat với AI assistant!</p>
+                    <a href="{% url 'chatbot:home' %}" class="btn btn-primary">
+                        <i class="fas fa-plus mr-2"></i>Bắt đầu chat
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Xác nhận xóa</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Bạn có chắc chắn muốn xóa cuộc trò chuyện này? Hành động này không thể hoàn tác.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Xóa</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let sessionToDelete = null;
+    
+    function deleteSession(sessionId) {
+        sessionToDelete = sessionId;
+        $('#deleteModal').modal('show');
+    }
+    
+    document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+        if (sessionToDelete) {
+            fetch(`/chatbot/session/${sessionToDelete}/delete/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token|escapejs }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Remove the session card from the page
+                    location.reload(); // Simple reload for now
+                } else {
+                    alert(data.error || 'Không thể xóa cuộc trò chuyện');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Có lỗi xảy ra khi xóa cuộc trò chuyện');
+            })
+            .finally(() => {
+                $('#deleteModal').modal('hide');
+                sessionToDelete = null;
+            });
+        }
+    });
+</script>
+{% endblock %}

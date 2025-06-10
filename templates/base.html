@@ -47,11 +47,11 @@
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown">
                                 <i class="fas fa-user-circle mr-1"></i> {{ user.get_full_name|default:user.username }}
-                            </a>
-                            <div class="dropdown-menu dropdown-menu-right">
+                            </a>                            <div class="dropdown-menu dropdown-menu-right">
                                 <a class="dropdown-item" href="{% url 'patients:profile' %}"><i class="fas fa-id-card mr-2"></i> Hồ sơ</a>
                                 <a class="dropdown-item" href="{% url 'appointments:list' %}"><i class="fas fa-calendar-check mr-2"></i> Lịch hẹn</a>
                                 <a class="dropdown-item" href="{% url 'patients:medical_history' %}"><i class="fas fa-file-medical mr-2"></i> Bệnh án</a>
+                                <a class="dropdown-item" href="{% url 'chatbot:history' %}"><i class="fas fa-history mr-2"></i> Lịch sử Chat</a>
                                 <div class="dropdown-divider"></div>
                                 <a class="dropdown-item text-danger" href="{% url 'accounts:logout' %}"><i class="fas fa-sign-out-alt mr-2"></i> Đăng xuất</a>
                             </div>

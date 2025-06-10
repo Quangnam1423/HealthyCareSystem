@@ -41,17 +41,30 @@ def chat_session(request, session_id):
     
     messages_list = ChatMessage.objects.filter(session=session).order_by('created_at')
     
+    # Get recent sessions for sidebar
+    recent_sessions = ChatSession.objects.filter(user=request.user).order_by('-updated_at')[:10]
+    
     context = {
         'session': session,
+        'current_session': session,  # Add alias for template consistency
         'messages': messages_list,
         'session_id': session_id, # Pass the string representation of the UUID
+        'recent_sessions': recent_sessions,  # Add recent sessions for sidebar
     }
     return render(request, 'chatbot/chat_session.html', context)
 
 @login_required
 def chat_history(request):
     """Lịch sử chat"""
-    sessions = ChatSession.objects.filter(user=request.user).order_by('-updated_at')
+    from django.core.paginator import Paginator
+    
+    sessions_list = ChatSession.objects.filter(user=request.user).order_by('-updated_at')
+    
+    # Pagination
+    paginator = Paginator(sessions_list, 12)  # 12 sessions per page
+    page_number = request.GET.get('page')
+    sessions = paginator.get_page(page_number)
+    
     context = {'sessions': sessions}
     return render(request, 'chatbot/chat_history.html', context)
 
@@ -158,3 +171,20 @@ def send_message(request):
         # Log the exception for server-side debugging
         print(f"Error in send_message: {e}") # Or use proper logging
         return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+@require_http_methods(["POST"])
+def delete_session(request, session_id):
+    """Xóa session chat"""
+    try:
+        session_uuid = uuid.UUID(session_id)
+        session = get_object_or_404(ChatSession, session_id=session_uuid, user=request.user)
+        
+        session.delete()
+        
+        return JsonResponse({'success': True})
+    except ValueError:
+        return JsonResponse({'error': 'Định dạng session_id không hợp lệ.'}, status=400)
+    except Exception as e:
+        print(f"Error deleting session: {e}")
+        return JsonResponse({'error': 'Không thể xóa cuộc trò chuyện.'}, status=500)
